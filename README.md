@@ -5,7 +5,18 @@ Flashcards de programação gerados por IA e agendados com repetição espaçada
 Você digita um tema (por exemplo, *"índices no PostgreSQL"*), a IA monta um **plano de estudos em etapas** com
 flashcards, você revisa e edita o que quiser, e o algoritmo **FSRS** decide quando cada cartão deve voltar.
 
+**Acesse:** [estuda-ai-s5we.vercel.app](https://estuda-ai-s5we.vercel.app) · precisa de uma chave própria da
+[Anthropic](https://console.anthropic.com/settings/keys) para gerar planos.
+
+[![CI](https://github.com/lucas-3010/Estuda-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/lucas-3010/Estuda-AI/actions/workflows/ci.yml)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
+![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
+
 > Projeto pessoal de estudo e portfólio: Next.js + Supabase (Postgres com RLS) + API do Claude.
+
+![Tela de entrada do Estuda-AI](docs/img/login.png)
 
 ## Funcionalidades
 
@@ -98,3 +109,7 @@ A CI do GitHub Actions roda lint, typecheck, testes unitários, build, testes do
    cujo callback é `https://<ref>.supabase.co/auth/v1/callback`.
 4. Importe o repositório na [Vercel](https://vercel.com/new) e configure as variáveis
    `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Supabase → Project Settings → API Keys).
+
+## Licença
+
+[MIT](LICENSE)
