@@ -121,7 +121,7 @@ Todas as tabelas têm `user_id uuid references auth.users not null` e RLS ativa 
 **cards**: `id`, `user_id`, `step_id → plan_steps on delete set null` (nulo para cartões avulsos),
 `front text`, `back text`, `created_at`, `updated_at`, e o estado FSRS:
 `due timestamptz`, `stability float8`, `difficulty float8`, `elapsed_days int`,
-`scheduled_days int`, `reps int`, `lapses int`, `state smallint` (0 novo, 1 aprendendo,
+`scheduled_days int`, `learning_steps int`, `reps int`, `lapses int`, `state smallint` (0 novo, 1 aprendendo,
 2 revisão, 3 reaprendendo), `last_review timestamptz null`.
 Índice em `(user_id, due)`.
 
@@ -135,7 +135,7 @@ Todas as tabelas têm `user_id uuid references auth.users not null` e RLS ativa 
 **Funções**
 - `record_review(p_card_id uuid, p_rating smallint, p_next jsonb)`, onde `p_next` traz o novo
   estado FSRS calculado no cliente (`due`, `stability`, `difficulty`, `elapsed_days`,
-  `scheduled_days`, `reps`, `lapses`, `state`, `last_review`): verifica que o cartão pertence a `auth.uid()`,
+  `scheduled_days`, `learning_steps`, `reps`, `lapses`, `state`, `last_review`): verifica que o cartão pertence a `auth.uid()`,
   insere o log e atualiza o cartão na mesma transação.
 - `review_stats(days int)` e `due_forecast(days int)`: agregações usadas na página de estatísticas.
 
