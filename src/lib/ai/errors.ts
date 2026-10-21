@@ -1,8 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 export type AiErrorCode =
-  | "no_key"
-  | "bad_key"
+  | "quota_exceeded"
+  | "files_not_allowed"
+  | "unavailable"
   | "rate_limited"
   | "refused"
   | "invalid_output"
@@ -10,9 +11,10 @@ export type AiErrorCode =
   | "unauthenticated";
 
 const MESSAGES: Record<AiErrorCode, string> = {
-  no_key: "Configure sua chave da Anthropic em Configurações para gerar planos.",
-  bad_key: "Sua chave foi recusada. Confira em Configurações.",
-  rate_limited: "Limite ou crédito da sua conta Anthropic atingido.",
+  quota_exceeded: "Você usou todas as gerações com IA do seu plano este mês. Troque de plano para gerar mais.",
+  files_not_allowed: "Gerar a partir de PDF e foto está nos planos Pro e Max.",
+  unavailable: "A geração com IA está indisponível agora. Tente de novo em alguns minutos.",
+  rate_limited: "Muitas gerações seguidas. Espere um minuto e tente de novo.",
   refused: "A IA não gerou conteúdo para este tema. Tente reformular.",
   invalid_output: "A IA devolveu uma resposta incompleta. Tente de novo.",
   network: "Não foi possível falar com a IA. Verifique sua conexão e tente de novo.",
@@ -41,11 +43,12 @@ function isCreditError(e: InstanceType<typeof Anthropic.APIError>): boolean {
 
 export function toAiError(e: unknown): AiError {
   if (e instanceof AiError) return e;
+  // Problemas na chave ou no saldo do servidor não são culpa do usuário.
   if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) {
-    return new AiError("bad_key");
+    return new AiError("unavailable");
   }
-  if (e instanceof Anthropic.RateLimitError) return new AiError("rate_limited");
-  if (e instanceof Anthropic.BadRequestError && isCreditError(e)) return new AiError("rate_limited");
+  if (e instanceof Anthropic.RateLimitError) return new AiError("unavailable");
+  if (e instanceof Anthropic.BadRequestError && isCreditError(e)) return new AiError("unavailable");
   if (e instanceof Anthropic.APIConnectionError) return new AiError("network");
   return new AiError("network");
 }

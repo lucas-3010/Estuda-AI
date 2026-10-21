@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "@/lib/supabase/env";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+const PUBLIC_PATHS = ["/login", "/auth", "/bem-vindo", "/precos"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -25,6 +25,12 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
+  // Quem não entrou vê a página inicial pública no endereço "/".
+  if (!signedIn && pathname === "/") {
+    const landing = request.nextUrl.clone();
+    landing.pathname = "/bem-vindo";
+    return NextResponse.rewrite(landing, { headers: response.headers });
+  }
   if (!signedIn && !isPublic && !pathname.startsWith("/api/")) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";

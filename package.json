@@ -25,6 +25,8 @@
     "rehype-highlight": "^7.0.2",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
+    "server-only": "^0.0.1",
+    "stripe": "^23.0.0",
     "ts-fsrs": "^5.4.2",
     "zod": "^4.6.7"
   },

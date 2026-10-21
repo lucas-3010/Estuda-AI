@@ -6,11 +6,14 @@ import { AiError } from "@/lib/ai/errors";
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: push, refresh: vi.fn() }) }));
 
-const getApiKey = vi.fn<() => string | null>();
 const callGenerate = vi.fn();
-vi.mock("@/lib/apiKey", () => ({
-  getApiKey: () => getApiKey(),
-  callGenerate: (...args: unknown[]) => callGenerate(...args),
+vi.mock("@/lib/generateClient", () => ({ callGenerate: (...args: unknown[]) => callGenerate(...args) }));
+vi.mock("@/lib/data/account", () => ({
+  getAccount: async () => ({
+    plan: { id: "gratis", name: "Grátis", generations: 3, files: false },
+    used: 1,
+    remaining: 2,
+  }),
 }));
 
 const savePlan = vi.fn();
@@ -39,17 +42,41 @@ async function generatePlan() {
 
 beforeEach(() => {
   push.mockReset();
-  getApiKey.mockReset().mockReturnValue("sk-ant-teste");
   callGenerate.mockReset().mockResolvedValue(plan);
   savePlan.mockReset().mockResolvedValue("plan-1");
 });
 
 describe("Novo tema", () => {
-  test("sem chave mostra link para Configurações", async () => {
-    getApiKey.mockReturnValue(null);
+  test("mostra quantas gerações restam no mês", async () => {
     render(<NewTopicFlow />);
-    const link = await screen.findByRole("link", { name: /configurações/i });
-    expect(link).toHaveAttribute("href", "/configuracoes");
+    expect(await screen.findByText("2 de 3 gerações com IA restantes este mês")).toBeInTheDocument();
+  });
+
+  test("no plano grátis, PDF e foto mostram o convite para assinar", async () => {
+    const user = userEvent.setup();
+    render(<NewTopicFlow />);
+    await screen.findByText(/gerações com IA restantes/);
+    await user.click(screen.getByRole("tab", { name: "Do meu material" }));
+    await user.click(screen.getByRole("button", { name: "PDF ou foto" }));
+    expect(screen.getByText(/está nos planos Pro e Max/)).toBeInTheDocument();
+  });
+
+  test("gera a partir de texto colado", async () => {
+    const user = userEvent.setup();
+    render(<NewTopicFlow />);
+    await user.click(screen.getByRole("tab", { name: "Do meu material" }));
+    await user.type(screen.getByLabelText("Texto para estudar"), "A mitocôndria é a organela que produz energia na forma de ATP.");
+    await user.type(screen.getByLabelText("Nome do tema"), "Organelas");
+    await user.click(screen.getByRole("button", { name: "Gerar cartões" }));
+    await screen.findByRole("heading", { name: /Fundamentos/ });
+    expect(callGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "source",
+        topic: "Organelas",
+        source: { kind: "text", text: "A mitocôndria é a organela que produz energia na forma de ATP." },
+      }),
+      expect.anything(),
+    );
   });
 
   test("gera o plano e mostra a prévia de todas as etapas", async () => {
@@ -110,13 +137,14 @@ describe("Novo tema", () => {
     expect(screen.getByDisplayValue("Fundamentos pergunta 1")).toBeInTheDocument();
   });
 
-  test("chave recusada mostra a mensagem e mantém o tema digitado", async () => {
-    callGenerate.mockRejectedValue(new AiError("bad_key"));
+  test("cota esgotada mostra a mensagem, o link de planos e mantém o tema digitado", async () => {
+    callGenerate.mockRejectedValue(new AiError("quota_exceeded"));
     const user = userEvent.setup();
     render(<NewTopicFlow />);
     await user.type(screen.getByLabelText(/tema/i), "Recursão");
     await user.click(screen.getByRole("button", { name: /gerar plano/i }));
-    expect(await screen.findByText("Sua chave foi recusada. Confira em Configurações.")).toBeInTheDocument();
+    expect(await screen.findByText(/Você usou todas as gerações com IA/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver planos" })).toHaveAttribute("href", "/precos");
     expect(screen.getByLabelText(/tema/i)).toHaveValue("Recursão");
   });
 

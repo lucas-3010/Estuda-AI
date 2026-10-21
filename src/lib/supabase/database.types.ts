@@ -197,17 +197,65 @@ export type Database = {
           user_id: string;
           new_cards_per_day: number;
           desired_retention: number;
+          daily_goal: number;
+          time_zone: string;
+          email_reminders: boolean;
+          onboarded_at: string | null;
         };
         Insert: {
           user_id: string;
           new_cards_per_day?: number;
           desired_retention?: number;
+          daily_goal?: number;
+          time_zone?: string;
+          email_reminders?: boolean;
+          onboarded_at?: string | null;
         };
         Update: {
           user_id?: string;
           new_cards_per_day?: number;
           desired_retention?: number;
+          daily_goal?: number;
+          time_zone?: string;
+          email_reminders?: boolean;
+          onboarded_at?: string | null;
         };
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: {
+          user_id: string;
+          plan: string;
+          status: string;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          current_period_end: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          plan?: string;
+          status?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          current_period_end?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          plan?: string;
+          status?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          current_period_end?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_usage: {
+        Row: { id: number; user_id: string; kind: string; created_at: string };
+        Insert: { id?: never; user_id: string; kind: string; created_at?: string };
+        Update: { id?: never; user_id?: string; kind?: string; created_at?: string };
         Relationships: [];
       };
     };
@@ -232,6 +280,29 @@ export type Database = {
       new_cards_studied_today: {
         Args: { p_tz: string };
         Returns: number;
+      };
+      claim_generation: {
+        Args: { p_user: string; p_kind: string; p_limit: number };
+        Returns: { usage_id: number; used: number }[];
+      };
+      refund_generation: {
+        Args: { p_usage_id: number };
+        Returns: undefined;
+      };
+      study_streak: {
+        Args: { p_tz: string };
+        Returns: { current_streak: number; best_streak: number; reviews_today: number }[];
+      };
+      reminder_candidates: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          email: string;
+          plan: string;
+          time_zone: string;
+          due_today: number;
+          generations_used: number;
+        }[];
       };
     };
     Enums: { [_ in never]: never };

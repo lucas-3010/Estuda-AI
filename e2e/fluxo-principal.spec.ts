@@ -33,8 +33,7 @@ async function magicLinkFor(email: string): Promise<string> {
 
 async function login(page: Page) {
   const email = `e2e-${Date.now()}@teste.dev`;
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/login");
   await page.getByLabel("E-mail").fill(email);
   await page.getByRole("button", { name: "Receber link de acesso" }).click();
   await expect(page.getByText(/confira seu e-mail/i)).toBeVisible();
@@ -49,27 +48,20 @@ async function login(page: Page) {
 }
 
 test("gerar plano com IA, salvar e revisar um cartão", async ({ page }) => {
-  let sentKey: string | null = null;
   await page.route("**/api/generate", async (route) => {
-    sentKey = route.request().headers()["x-anthropic-key"] ?? null;
     await route.fulfill({ json: PLAN });
   });
 
   await login(page);
+  // Dicas de boas-vindas na primeira visita
+  await page.getByRole("button", { name: "Pular" }).click();
   await expect(page.getByRole("link", { name: "Criar meu primeiro plano" })).toBeVisible();
-
-  // Configura a chave (só no navegador)
-  await page.getByRole("link", { name: "Configurações" }).click();
-  await page.getByLabel("Cole sua chave").fill("sk-ant-e2e-falsa-1234");
-  await page.getByRole("button", { name: "Salvar" }).first().click();
-  await expect(page.getByText("sk-ant-…1234")).toBeVisible();
 
   // Gera e salva o plano
   await page.getByRole("link", { name: "Novo tema" }).click();
   await page.getByLabel("Tema").fill("Banco de dados relacional");
   await page.getByRole("button", { name: "Gerar plano" }).click();
   await expect(page.getByRole("heading", { name: "Fundamentos" })).toBeVisible();
-  expect(sentKey).toBe("sk-ant-e2e-falsa-1234");
   await page.getByRole("button", { name: "Salvar plano" }).click();
 
   // Com cacheComponents o Next mantém páginas anteriores ocultas no DOM, por isso

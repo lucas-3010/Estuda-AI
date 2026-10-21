@@ -20,7 +20,7 @@ function message(body: unknown, stop_reason = "end_turn") {
 function fakeClient(...responses: ReturnType<typeof message>[]) {
   const stream = vi.fn();
   for (const r of responses) stream.mockReturnValueOnce({ finalMessage: async () => r });
-  const client = { beta: { messages: { stream } } } as unknown as AiClient;
+  const client = { messages: { stream } } as unknown as AiClient;
   return { client, stream };
 }
 
@@ -57,12 +57,11 @@ describe("generate", () => {
     expect(stream).toHaveBeenCalledTimes(1);
   });
 
-  test("usa o Claude Opus 5.5 com pensamento adaptativo e saída estruturada", async () => {
+  test("usa o Claude Haiku 5.5 com saída estruturada", async () => {
     const { client, stream } = fakeClient(message(validPlan));
     await generate(client, planRequest);
     const params = stream.mock.calls[0][0];
-    expect(params.model).toBe("claude-opus-5-5");
-    expect(params.thinking).toEqual({ type: "adaptive" });
+    expect(params.model).toBe("claude-haiku-5-5");
     expect(params.output_config.effort).toBe("medium");
     expect(params.output_config.format.type).toBe("json_schema");
     expect(JSON.stringify(params)).not.toContain("budget_tokens");
@@ -85,9 +84,20 @@ describe("generate", () => {
     ).resolves.toEqual(step(6));
   });
 
-  test("modo ping devolve ok", async () => {
-    const { client, stream } = fakeClient(message("ok"));
-    await expect(generate(client, { mode: "ping" })).resolves.toEqual({ ok: true });
-    expect(stream.mock.calls[0][0].max_tokens).toBeLessThanOrEqual(1024);
+  test("modo source manda o PDF antes da instrução", async () => {
+    const { client, stream } = fakeClient(message(validPlan));
+    await generate(client, { ...planRequest, mode: "source", source: { kind: "pdf", data: "JVBERi0x" } });
+    const content = stream.mock.calls[0][0].messages[0].content;
+    expect(content[0]).toEqual({
+      type: "document",
+      source: { type: "base64", media_type: "application/pdf", data: "JVBERi0x" },
+    });
+    expect(content[1].text).toContain("com base no material");
+  });
+
+  test("modo source com texto colado embrulha o material", async () => {
+    const { client, stream } = fakeClient(message(validPlan));
+    await generate(client, { ...planRequest, mode: "source", source: { kind: "text", text: "Mitocôndria produz ATP." } });
+    expect(stream.mock.calls[0][0].messages[0].content[0].text).toContain("<material>\nMitocôndria produz ATP.");
   });
 });

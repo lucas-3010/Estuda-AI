@@ -66,6 +66,36 @@ export function StudySettings() {
             Mais alta significa lembrar mais, com mais revisões por dia.
           </p>
         </div>
+        <div>
+          <label htmlFor="meta" className={label}>
+            Meta diária de revisões
+          </label>
+          <input
+            id="meta"
+            type="number"
+            min={1}
+            max={1000}
+            value={settings.dailyGoal}
+            onChange={(e) => setSettings({ ...settings, dailyGoal: Number(e.target.value) })}
+            className={`mt-1 ${input}`}
+          />
+          <p className={`mt-1 ${muted}`}>Aparece no Início junto com a sua sequência de dias.</p>
+        </div>
+        <div className="flex items-start gap-3">
+          <input
+            id="lembrete"
+            type="checkbox"
+            checked={settings.emailReminders}
+            onChange={(e) => setSettings({ ...settings, emailReminders: e.target.checked })}
+            className="mt-1 h-4 w-4 accent-indigo-600"
+          />
+          <label htmlFor="lembrete" className="text-sm">
+            <span className="font-medium">Lembrete diário por e-mail</span>
+            <span className={`block ${muted}`}>
+              Todo dia de manhã, quantos cartões você tem para revisar. Disponível nos planos pagos.
+            </span>
+          </label>
+        </div>
         <div className="flex items-center gap-3 sm:col-span-2">
           <button type="submit" className={btnPrimary} disabled={status === "saving" || status === "loading"}>
             {status === "saving" ? "Salvando…" : "Salvar"}
