@@ -3,7 +3,7 @@ import { Pricing } from "@/components/marketing/Pricing";
 import { SiteFooter, SiteHeader } from "@/components/marketing/SiteHeader";
 
 export const metadata: Metadata = {
-  title: "Preços · Estuda-AI",
+  title: "Preços",
   description: "Planos do Estuda-AI: comece grátis e assine para gerar mais flashcards com IA.",
 };
 
@@ -24,6 +24,14 @@ const FAQ = [
     q: "Quais formas de pagamento?",
     a: "Cartão de crédito, pela Stripe. Seus dados de cartão não passam pelo Estuda-AI.",
   },
+  {
+    q: "Os cartões gerados pela IA estão sempre certos?",
+    a: "A IA acerta a grande maioria, mas pode errar. Por isso você revisa e edita cada cartão antes de salvar. Para leis e dados oficiais, confira na fonte.",
+  },
+  {
+    q: "O que acontece com o meu material enviado?",
+    a: "Textos, PDFs e fotos são usados só para gerar os cartões e não ficam guardados no Estuda-AI. Detalhes na política de privacidade.",
+  },
 ];
 
 export default function PricingPage() {
@@ -38,7 +46,7 @@ export default function PricingPage() {
         <div className="mt-8">
           <Pricing />
         </div>
-        <section className="mt-14 max-w-3xl">
+        <section id="perguntas" className="mt-14 max-w-3xl scroll-mt-6">
           <h2 className="text-xl font-semibold">Perguntas frequentes</h2>
           <dl className="mt-4 flex flex-col gap-5">
             {FAQ.map((item) => (
