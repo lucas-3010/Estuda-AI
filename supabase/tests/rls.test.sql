@@ -4,6 +4,19 @@ set search_path = public, extensions;
 
 select plan(10);
 
+-- Conta linhas visíveis; sem permissão na tabela conta como 0 (depende de como
+-- o projeto expõe tabelas novas à Data API).
+create function pg_temp.visible_rows(t text) returns int
+language plpgsql as $$
+declare n int;
+begin
+  execute format('select count(*) from public.%I', t) into n;
+  return n;
+exception when insufficient_privilege then
+  return 0;
+end;
+$$;
+
 -- Usuários de teste
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000a1', 'a@teste.dev'),
@@ -50,8 +63,8 @@ select is((select count(*)::int from study_plans), 1, 'delete de B não apagou o
 reset role;
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
-select throws_ok('select count(*) from cards', '42501', null, 'anônimo não acessa cartões');
-select throws_ok('select count(*) from review_logs', '42501', null, 'anônimo não acessa revisões');
+select is(pg_temp.visible_rows('cards'), 0, 'anônimo não vê cartões');
+select is(pg_temp.visible_rows('review_logs'), 0, 'anônimo não vê revisões');
 
 select * from finish();
 rollback;

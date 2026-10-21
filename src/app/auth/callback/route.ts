@@ -9,6 +9,9 @@ export async function GET(request: Request) {
     const supabase = await createServerSupabase();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL("/", url.origin));
+    console.error("Falha ao concluir o login:", error.message);
+  } else {
+    console.error("Retorno de login sem código:", url.searchParams.get("error_description") ?? url.search);
   }
   return NextResponse.redirect(new URL("/login?erro=1", url.origin));
 }

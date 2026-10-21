@@ -18,5 +18,7 @@ export default defineConfig({
     url: `${baseURL}/login`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    stdout: "pipe",
+    stderr: "pipe",
   },
 });

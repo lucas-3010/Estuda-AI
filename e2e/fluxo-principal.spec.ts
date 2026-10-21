@@ -38,8 +38,14 @@ async function login(page: Page) {
   await page.getByLabel("E-mail").fill(email);
   await page.getByRole("button", { name: "Receber link de acesso" }).click();
   await expect(page.getByText(/confira seu e-mail/i)).toBeVisible();
-  await page.goto(await magicLinkFor(email));
-  await expect(page.getByRole("heading", { name: "Início" })).toBeVisible();
+  const link = await magicLinkFor(email);
+  await page.goto(link);
+  try {
+    await expect(page.getByRole("heading", { name: "Início" })).toBeVisible({ timeout: 15_000 });
+  } catch {
+    const body = (await page.locator("body").innerText()).slice(0, 300);
+    throw new Error(`Login não concluído. Link: ${link.replace(/token=[^&]+/, "token=…")} | URL final: ${page.url()} | Página: ${body}`);
+  }
 }
 
 test("gerar plano com IA, salvar e revisar um cartão", async ({ page }) => {
