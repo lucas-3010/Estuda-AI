@@ -72,22 +72,24 @@ test("gerar plano com IA, salvar e revisar um cartão", async ({ page }) => {
   expect(sentKey).toBe("sk-ant-e2e-falsa-1234");
   await page.getByRole("button", { name: "Salvar plano" }).click();
 
+  // Com cacheComponents o Next mantém páginas anteriores ocultas no DOM, por isso
+  // as buscas por texto daqui em diante consideram só elementos visíveis.
   // Início: 20 cartões novos (limite diário padrão)
   await expect(page.getByRole("heading", { name: "Início" })).toBeVisible();
-  await expect(page.getByText("cartões para hoje")).toBeVisible();
-  await expect(page.getByText("20", { exact: true })).toBeVisible();
+  await expect(page.getByText("cartões para hoje").filter({ visible: true })).toBeVisible();
+  await expect(page.getByText("20", { exact: true }).filter({ visible: true })).toBeVisible();
 
   // Revisa um cartão como Fácil
   await page.getByRole("link", { name: "Revisar agora" }).click();
-  await expect(page.getByText("Fundamentos: pergunta 1?")).toBeVisible();
+  await expect(page.getByText("Fundamentos: pergunta 1?").filter({ visible: true })).toBeVisible();
   await page.keyboard.press("Space");
-  await expect(page.getByText("Fundamentos: resposta 1")).toBeVisible();
+  await expect(page.getByText("Fundamentos: resposta 1").filter({ visible: true })).toBeVisible();
   await page.keyboard.press("4");
-  await expect(page.getByText("Fundamentos: pergunta 2?")).toBeVisible();
+  await expect(page.getByText("Fundamentos: pergunta 2?").filter({ visible: true })).toBeVisible();
 
   // De volta ao Início, sobram 19
   await page.getByRole("link", { name: "Início" }).click();
-  await expect(page.getByText("19", { exact: true })).toBeVisible();
+  await expect(page.getByText("19", { exact: true }).filter({ visible: true })).toBeVisible();
 
   // Estatísticas registram a revisão
   await page.getByRole("link", { name: "Estatísticas" }).click();
