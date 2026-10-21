@@ -15,46 +15,27 @@ const plan = {
 };
 
 beforeEach(() => {
-  fake = fakeSupabase({
-    "study_plans.insert": { data: { id: "plan-1" }, error: null },
-    "plan_steps.insert": {
-      data: [
-        { id: "step-a", position: 0 },
-        { id: "step-b", position: 1 },
-      ],
-      error: null,
-    },
-    "cards.insert": { data: null, error: null },
-  });
+  fake = fakeSupabase();
 });
 
 describe("savePlan", () => {
-  test("insere plano, etapas em ordem e cartões novos ligados às etapas", async () => {
-    const id = await savePlan({ topic: "Joins", level: "iniciante", plan });
+  test("grava tudo numa única chamada save_plan", async () => {
+    fake = fakeSupabase({ "rpc.save_plan": { data: "plan-1", error: null } });
+    const id = await savePlan({ topic: "Joins", level: "iniciante", context: "", plan });
     expect(id).toBe("plan-1");
-
-    const insert = (table: string) => fake.calls.find((c) => c.table === table && c.op === "insert")!.args[0];
-    expect(insert("study_plans")).toMatchObject({ topic: "Joins", level: "iniciante" });
-    expect(insert("plan_steps")).toEqual([
-      { plan_id: "plan-1", position: 0, title: "Básico", goal: "Entender" },
-      { plan_id: "plan-1", position: 1, title: "Avançado", goal: "Aplicar" },
-    ]);
-    const cards = insert("cards") as Array<Record<string, unknown>>;
-    expect(cards).toHaveLength(3);
-    expect(cards.map((c) => c.step_id)).toEqual(["step-a", "step-a", "step-b"]);
-    expect(cards.every((c) => c.state === 0)).toBe(true);
+    expect(fake.client.rpc).toHaveBeenCalledTimes(1);
+    expect(fake.client.rpc).toHaveBeenCalledWith("save_plan", {
+      p_topic: "Joins",
+      p_level: "iniciante",
+      p_context: null,
+      p_steps: plan.steps,
+    });
+    expect(fake.client.from).not.toHaveBeenCalled();
   });
 
-  test("falha ao inserir cartões apaga o plano e relança o erro", async () => {
-    fake = fakeSupabase({
-      "study_plans.insert": { data: { id: "plan-1" }, error: null },
-      "plan_steps.insert": { data: [{ id: "step-a", position: 0 }, { id: "step-b", position: 1 }], error: null },
-      "cards.insert": { data: null, error: { message: "falhou" } },
-    });
+  test("erro do banco é relançado", async () => {
+    fake = fakeSupabase({ "rpc.save_plan": { data: null, error: { message: "falhou" } } });
     await expect(savePlan({ topic: "Joins", level: "iniciante", plan })).rejects.toBeTruthy();
-    const del = fake.calls.find((c) => c.table === "study_plans" && c.op === "delete");
-    expect(del).toBeDefined();
-    expect(fake.calls).toContainEqual({ table: "study_plans", op: "eq", args: ["id", "plan-1"] });
   });
 });
 

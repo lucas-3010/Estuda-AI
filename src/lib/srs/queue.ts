@@ -20,7 +20,7 @@ export function localDay(date: Date, timeZone: string): string {
 /**
  * Fila de revisão do dia: cartões já estudados que vencem até o fim do dia local
  * (mais atrasados primeiro), seguidos dos novos dentro do limite diário restante
- * (mais antigos primeiro).
+ * (na ordem de vencimento, que segue a ordem das etapas do plano).
  */
 export function buildQueue(cards: CardRow[], opts: QueueOptions): CardRow[] {
   const today = localDay(opts.now, opts.timeZone);
@@ -33,7 +33,7 @@ export function buildQueue(cards: CardRow[], opts: QueueOptions): CardRow[] {
   const remainingNew = Math.max(0, opts.newPerDay - opts.newStudiedToday);
   const fresh = cards
     .filter((c) => c.state === 0)
-    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))
+    .sort((a, b) => Date.parse(a.due) - Date.parse(b.due) || a.id.localeCompare(b.id))
     .slice(0, remainingNew);
 
   return [...due, ...fresh];

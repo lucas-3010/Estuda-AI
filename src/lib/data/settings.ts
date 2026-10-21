@@ -23,9 +23,9 @@ export async function updateSettings(settings: Settings): Promise<void> {
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims?.sub;
   if (!userId) throw new Error("Sessão expirada");
-  const { error } = await supabase
-    .from("user_settings")
-    .update({ new_cards_per_day: settings.newCardsPerDay, desired_retention: settings.desiredRetention })
-    .eq("user_id", userId);
+  const { error } = await supabase.from("user_settings").upsert(
+    { user_id: userId, new_cards_per_day: settings.newCardsPerDay, desired_retention: settings.desiredRetention },
+    { onConflict: "user_id" },
+  );
   if (error) throw error;
 }

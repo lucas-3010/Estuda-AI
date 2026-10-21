@@ -24,55 +24,21 @@ export function newCardState(now = new Date()) {
   return toNextState(createEmptyCard(now));
 }
 
+/** Grava plano, etapas e cartões numa única transação (função `save_plan`). */
 export async function savePlan(input: {
   topic: string;
   level: Level;
   context?: string;
   plan: GeneratedPlan;
 }): Promise<string> {
-  const supabase = createBrowserSupabase();
-
-  const { data: planRow, error: planError } = await supabase
-    .from("study_plans")
-    .insert({ topic: input.topic, level: input.level, context: input.context || null })
-    .select("id")
-    .single();
-  if (planError || !planRow) throw planError ?? new Error("Plano não criado");
-
-  try {
-    const { data: steps, error: stepsError } = await supabase
-      .from("plan_steps")
-      .insert(
-        input.plan.steps.map((step, position) => ({
-          plan_id: planRow.id,
-          position,
-          title: step.title,
-          goal: step.goal,
-        })),
-      )
-      .select("id, position");
-    if (stepsError || !steps) throw stepsError ?? new Error("Etapas não criadas");
-
-    const stepIdByPosition = new Map(steps.map((s) => [s.position, s.id]));
-    const initial = newCardState();
-    const { error: cardsError } = await supabase.from("cards").insert(
-      input.plan.steps.flatMap((step, position) =>
-        step.cards.map((card) => ({
-          ...initial,
-          step_id: stepIdByPosition.get(position) ?? null,
-          front: card.front,
-          back: card.back,
-        })),
-      ),
-    );
-    if (cardsError) throw cardsError;
-  } catch (error) {
-    // Sem transação no cliente: desfaz o plano (cascade apaga etapas e cartões).
-    await supabase.from("study_plans").delete().eq("id", planRow.id);
-    throw error;
-  }
-
-  return planRow.id;
+  const { data, error } = await createBrowserSupabase().rpc("save_plan", {
+    p_topic: input.topic,
+    p_level: input.level,
+    p_context: input.context || null,
+    p_steps: input.plan.steps,
+  });
+  if (error || !data) throw error ?? new Error("Plano não criado");
+  return data;
 }
 
 export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {

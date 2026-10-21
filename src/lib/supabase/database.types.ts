@@ -213,6 +213,10 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      save_plan: {
+        Args: { p_topic: string; p_level: string; p_context: string | null; p_steps: Json };
+        Returns: string;
+      };
       record_review: {
         Args: { p_card_id: string; p_rating: number; p_next: Json };
         Returns: undefined;

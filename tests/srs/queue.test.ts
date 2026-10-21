@@ -50,6 +50,16 @@ describe("fila do dia", () => {
     expect(queue).toHaveLength(5);
   });
 
+  test("novos criados juntos seguem a ordem de vencimento do plano", () => {
+    const created = "2026-10-20T12:00:00.000Z";
+    const novo = (id: string, due: string) => makeCardRow({ id, state: 0, created_at: created, due });
+    const queue = buildQueue(
+      [novo("c", "2026-10-20T12:00:00.002Z"), novo("a", "2026-10-20T12:00:00.000Z"), novo("b", "2026-10-20T12:00:00.001Z")],
+      { now, timeZone: tz, newPerDay: 20, newStudiedToday: 0 },
+    );
+    expect(queue.map((c) => c.id)).toEqual(["a", "b", "c"]);
+  });
+
   test("limite já esgotado não traz novos", () => {
     const queue = buildQueue([fresh("n1")], { now, timeZone: tz, newPerDay: 20, newStudiedToday: 25 });
     expect(queue).toEqual([]);
