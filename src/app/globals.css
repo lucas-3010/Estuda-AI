@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@import "highlight.js/styles/github-dark.css";
+
+:root {
+  --background: #fafafa;
+  --foreground: #18181b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #f4f4f5;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+
+.markdown {
+  line-height: 1.6;
+}
+.markdown > * + * {
+  margin-top: 0.6em;
+}
+.markdown ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.markdown ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.markdown code:not(pre code) {
+  border-radius: 0.3em;
+  background: rgb(0 0 0 / 0.06);
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+@media (prefers-color-scheme: dark) {
+  .markdown code:not(pre code) {
+    background: rgb(255 255 255 / 0.1);
+  }
+}
+.markdown pre {
+  overflow-x: auto;
+  border-radius: 0.6em;
+  font-size: 0.875em;
+}
+.markdown pre code.hljs {
+  padding: 0.9em 1em;
+}
+.markdown a {
+  text-decoration: underline;
+}
