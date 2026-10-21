@@ -90,7 +90,6 @@ export const COSTS = {
   fixed: {
     vercelPro: 20 * 5.5,
     supabasePro: 25 * 5.5,
-    appleDeveloper: (99 * 5.5) / 12,
     domain: 40 / 12,
   },
   /** Assinantes pagantes sobre os quais o custo fixo é dividido. */
