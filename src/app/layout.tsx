@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Estuda-AI",
   description:
-    "Flashcards de programação gerados por IA e agendados com repetição espaçada (FSRS).",
+    "Flashcards gerados por IA para qualquer matéria, com repetição espaçada (FSRS). ENEM, concursos, faculdade, idiomas e programação.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

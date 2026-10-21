@@ -70,7 +70,16 @@ describe("generateRequestSchema", () => {
     ).toBe(true);
   });
 
-  test("modo ping não exige tema", () => {
-    expect(generateRequestSchema.safeParse({ mode: "ping" }).success).toBe(true);
+  test("modo source aceita texto, PDF e imagem, e recusa texto curto demais", () => {
+    const base = { mode: "source", topic: "Biologia", level: "iniciante" };
+    expect(generateRequestSchema.safeParse({ ...base, source: { kind: "text", text: "a".repeat(60) } }).success).toBe(true);
+    expect(generateRequestSchema.safeParse({ ...base, source: { kind: "text", text: "curto" } }).success).toBe(false);
+    expect(generateRequestSchema.safeParse({ ...base, source: { kind: "pdf", data: "JVBERi0x" } }).success).toBe(true);
+    expect(
+      generateRequestSchema.safeParse({ ...base, source: { kind: "image", mediaType: "image/png", data: "iVBOR" } }).success,
+    ).toBe(true);
+    expect(
+      generateRequestSchema.safeParse({ ...base, source: { kind: "image", mediaType: "image/heic", data: "x" } }).success,
+    ).toBe(false);
   });
 });

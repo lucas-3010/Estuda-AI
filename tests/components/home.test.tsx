@@ -9,7 +9,7 @@ vi.mock("@/lib/data/cards", () => ({ listDueCandidates: () => listDueCandidates(
 const newCardsStudiedToday = vi.fn();
 vi.mock("@/lib/data/reviews", () => ({ newCardsStudiedToday: () => newCardsStudiedToday() }));
 vi.mock("@/lib/data/settings", () => ({
-  getSettings: async () => ({ newCardsPerDay: 20, desiredRetention: 0.9 }),
+  getSettings: async () => ({ newCardsPerDay: 20, desiredRetention: 0.9, dailyGoal: 20, emailReminders: true }),
   userTimeZone: () => "UTC",
 }));
 

@@ -3,6 +3,14 @@
 import { LEVELS, LEVEL_LABELS, LIMITS, type Level } from "@/lib/validation/plan";
 import { btnPrimary, btnSecondary, input, label, muted } from "@/components/ui/styles";
 
+const SUGGESTIONS = [
+  "Citologia para o ENEM",
+  "Direito Constitucional: direitos fundamentais",
+  "Phrasal verbs do dia a dia",
+  "Funções do 2º grau",
+  "SQL: joins e índices",
+];
+
 export type TopicValues = { topic: string; level: Level; context: string };
 
 export function TopicForm({
@@ -37,40 +45,30 @@ export function TopicForm({
           value={values.topic}
           maxLength={LIMITS.topicMax}
           onChange={(e) => onChange({ ...values, topic: e.target.value })}
-          placeholder="Ex.: índices no PostgreSQL, recursão, Big O"
+          placeholder="Ex.: Revolução Francesa, Direito Administrativo, phrasal verbs, funções do 2º grau"
           className={`mt-1 ${input}`}
         />
+        {!values.topic && (
+          <div className="mt-2 flex flex-wrap gap-2" aria-label="Sugestões rápidas">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onChange({ ...values, topic: s })}
+                className="rounded-full border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <fieldset>
-        <legend className={label}>Nível</legend>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {LEVELS.map((level) => (
-            <label
-              key={level}
-              className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm ${
-                values.level === level
-                  ? "border-indigo-600 bg-indigo-50 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200"
-                  : "border-zinc-300 dark:border-zinc-700"
-              }`}
-            >
-              <input
-                type="radio"
-                name="nivel"
-                value={level}
-                checked={values.level === level}
-                onChange={() => onChange({ ...values, level })}
-                className="sr-only"
-              />
-              {LEVEL_LABELS[level]}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <LevelPicker value={values.level} onChange={(level) => onChange({ ...values, level })} />
 
       <div>
         <label htmlFor="contexto" className={label}>
-          Contexto <span className="font-normal text-zinc-500">(opcional)</span>
+          Objetivo e contexto <span className="font-normal text-zinc-500">(opcional)</span>
         </label>
         <textarea
           id="contexto"
@@ -78,7 +76,7 @@ export function TopicForm({
           maxLength={LIMITS.contextMax}
           value={values.context}
           onChange={(e) => onChange({ ...values, context: e.target.value })}
-          placeholder="Ex.: já sei SELECT e WHERE; quero focar em performance"
+          placeholder="Ex.: prova do ENEM em novembro; concurso do INSS; já sei o básico"
           className={`mt-1 ${input}`}
         />
       </div>
@@ -99,5 +97,35 @@ export function TopicForm({
         )}
       </div>
     </form>
+  );
+}
+
+export function LevelPicker({ value, onChange }: { value: Level; onChange: (level: Level) => void }) {
+  return (
+    <fieldset>
+      <legend className={label}>Nível</legend>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {LEVELS.map((level) => (
+          <label
+            key={level}
+            className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm ${
+              value === level
+                ? "border-indigo-600 bg-indigo-50 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200"
+                : "border-zinc-300 dark:border-zinc-700"
+            }`}
+          >
+            <input
+              type="radio"
+              name="nivel"
+              value={level}
+              checked={value === level}
+              onChange={() => onChange(level)}
+              className="sr-only"
+            />
+            {LEVEL_LABELS[level]}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }

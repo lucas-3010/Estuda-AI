@@ -4,15 +4,15 @@ import { AiError, aiErrorMessage, toAiError } from "@/lib/ai/errors";
 
 describe("mensagens de erro", () => {
   test.each([
-    ["bad_key", "Sua chave foi recusada. Confira em Configurações."],
-    ["rate_limited", "Limite ou crédito da sua conta Anthropic atingido."],
+    ["quota_exceeded", "Você usou todas as gerações com IA do seu plano este mês. Troque de plano para gerar mais."],
+    ["rate_limited", "Muitas gerações seguidas. Espere um minuto e tente de novo."],
     ["refused", "A IA não gerou conteúdo para este tema. Tente reformular."],
   ] as const)("%s", (code, text) => {
     expect(aiErrorMessage(code)).toBe(text);
   });
 
   test("todos os códigos têm mensagem", () => {
-    for (const code of ["no_key", "bad_key", "rate_limited", "refused", "invalid_output", "network"] as const) {
+    for (const code of ["quota_exceeded", "files_not_allowed", "unavailable", "rate_limited", "refused", "invalid_output", "network"] as const) {
       expect(aiErrorMessage(code).length).toBeGreaterThan(10);
     }
   });
@@ -21,24 +21,24 @@ describe("mensagens de erro", () => {
 describe("toAiError", () => {
   const headers = new Headers();
 
-  test("401 vira bad_key", () => {
+  test("401 (chave do servidor) vira unavailable", () => {
     const e = new Anthropic.AuthenticationError(401, { error: { message: "invalid x-api-key" } }, undefined, headers);
-    expect(toAiError(e).code).toBe("bad_key");
+    expect(toAiError(e).code).toBe("unavailable");
   });
 
-  test("429 vira rate_limited", () => {
+  test("429 da Anthropic vira unavailable", () => {
     const e = new Anthropic.RateLimitError(429, { error: { message: "rate limited" } }, undefined, headers);
-    expect(toAiError(e).code).toBe("rate_limited");
+    expect(toAiError(e).code).toBe("unavailable");
   });
 
-  test("400 de crédito insuficiente vira rate_limited", () => {
+  test("400 de crédito insuficiente vira unavailable", () => {
     const e = new Anthropic.BadRequestError(
       400,
       { type: "error", error: { type: "invalid_request_error", message: "Your credit balance is too low to access the Anthropic API." } },
       undefined,
       headers,
     );
-    expect(toAiError(e).code).toBe("rate_limited");
+    expect(toAiError(e).code).toBe("unavailable");
   });
 
   test("falha de conexão vira network", () => {

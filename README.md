@@ -1,12 +1,11 @@
 # Estuda-AI
 
-Flashcards de programação gerados por IA e agendados com repetição espaçada.
+Flashcards de qualquer matéria gerados por IA e agendados com repetição espaçada.
 
 Você digita um tema (por exemplo, *"índices no PostgreSQL"*), a IA monta um **plano de estudos em etapas** com
 flashcards, você revisa e edita o que quiser, e o algoritmo **FSRS** decide quando cada cartão deve voltar.
 
-**Acesse:** [estuda-ai-s5we.vercel.app](https://estuda-ai-s5we.vercel.app) · precisa de uma chave própria da
-[Anthropic](https://console.anthropic.com/settings/keys) para gerar planos.
+**Acesse:** [estuda-ai-s5we.vercel.app](https://estuda-ai-s5we.vercel.app) · plano grátis com 3 gerações por mês.
 
 [![CI](https://github.com/lucas-3010/Estuda-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/lucas-3010/Estuda-AI/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
@@ -27,7 +26,12 @@ flashcards, você revisa e edita o que quiser, e o algoritmo **FSRS** decide qua
 - **Painel**: cartões do dia (respeitando o limite de novos por dia) e progresso de cada etapa.
 - **Cartões**: busca, filtro por plano, criação e edição manual com Markdown e código com realce de sintaxe.
 - **Estatísticas**: revisões por dia (30 dias), taxa de acerto e previsão de carga (14 dias).
-- **Login** com GitHub ou link mágico por e-mail.
+- **Gerar a partir do seu material**: texto colado, PDF ou foto (PDF e foto nos planos Pro e Max).
+- **Quiz de múltipla escolha** com os seus próprios cartões.
+- **Sequência de dias e meta diária**, com lembrete diário por e-mail para assinantes.
+- **Importar e exportar do Anki** (texto separado por tabulação).
+- **Planos pagos com Stripe**: Grátis, Básico, Pro e Max, com cota mensal de gerações controlada no banco.
+- **Login** com Google, Apple, GitHub ou link mágico por e-mail.
 
 ## Arquitetura
 
@@ -36,7 +40,7 @@ Navegador (Next.js, componentes cliente)
   ├─ Supabase JS ──────────────► Postgres (RLS: cada usuário só vê as próprias linhas)
   │    └─ RPC record_review      grava log + novo estado FSRS numa transação
   ├─ ts-fsrs (agenda no cliente)
-  └─ POST /api/generate ───────► Route Handler (Node) ──► API do Claude (chave do usuário)
+  └─ POST /api/generate ───────► Route Handler (Node) ──► API do Claude (chave do servidor + cota)
 ```
 
 | Pasta | O que tem |
@@ -56,8 +60,10 @@ Navegador (Next.js, componentes cliente)
   (90% por padrão), com menos revisões para a mesma retenção.
 - **Segurança no banco, não no front**: todas as tabelas têm RLS com `auth.uid() = user_id`. Os logs de revisão só
   podem ser criados pela função `record_review`, que confere o dono do cartão.
-- **Cada pessoa usa a própria chave da Anthropic**: a chave fica só no `localStorage` do navegador, vai num header
-  apenas na hora de gerar e nunca é gravada nem logada pelo servidor.
+- **Chave da Anthropic só no servidor, com cota por usuário**: cada geração é reservada pela função
+  `claim_generation` (trava por usuário, cota do plano e no máximo 5 por minuto) e devolvida se a IA falhar.
+- **Preços com margem calculada**: `src/lib/billing/plans.ts` modela custo da IA, taxas do Stripe e custos fixos, e
+  um teste garante pelo menos 30% de margem em cada plano pago.
 - **Saída estruturada + validação**: a IA responde em JSON Schema; o servidor valida com zod e tenta de novo uma vez
   se a resposta vier incompleta. Recusas por política usam o fallback automático da API.
 - **Fila por fuso horário**: "vence hoje" é calculado no fim do dia local do usuário, não em UTC.
@@ -84,8 +90,8 @@ npm run dev                   # http://127.0.0.1:3000
 ```
 
 O link mágico de login chega no Mailpit local: http://127.0.0.1:54324.
-Para gerar planos, cole uma chave da Anthropic em **Configurações**
-([console.anthropic.com](https://console.anthropic.com/settings/keys)).
+Para gerar planos, acrescente `ANTHROPIC_API_KEY` e `SUPABASE_SECRET_KEY` (a chave secreta/service role do
+`supabase status`). As demais variáveis estão em [docs/configuracao.md](docs/configuracao.md).
 
 ## Testes
 
@@ -109,6 +115,7 @@ A CI do GitHub Actions roda lint, typecheck, testes unitários, build, testes do
    cujo callback é `https://<ref>.supabase.co/auth/v1/callback`.
 4. Importe o repositório na [Vercel](https://vercel.com/new) e configure as variáveis
    `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Supabase → Project Settings → API Keys).
+5. Configure Stripe, Google, Apple, Resend e as demais variáveis seguindo [docs/configuracao.md](docs/configuracao.md).
 
 ## Licença
 

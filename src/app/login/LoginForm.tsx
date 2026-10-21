@@ -3,15 +3,37 @@
 import { useState } from "react";
 import { createBrowserSupabase } from "@/lib/supabase/client";
 
+type Provider = "google" | "apple" | "github";
+
+const PROVIDERS: { provider: Provider; label: string; className: string }[] = [
+  {
+    provider: "google",
+    label: "Entrar com Google",
+    className:
+      "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800",
+  },
+  {
+    provider: "apple",
+    label: "Entrar com Apple",
+    className: "bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200",
+  },
+  {
+    provider: "github",
+    label: "Entrar com GitHub",
+    className:
+      "border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800",
+  },
+];
+
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   const redirectTo = () => `${window.location.origin}/auth/callback`;
 
-  async function signInWithGitHub() {
+  async function signInWith(provider: Provider) {
     await createBrowserSupabase().auth.signInWithOAuth({
-      provider: "github",
+      provider,
       options: { redirectTo: redirectTo() },
     });
   }
@@ -28,13 +50,18 @@ export function LoginForm() {
 
   return (
     <div className="mt-8 flex flex-col gap-6">
-      <button
-        type="button"
-        onClick={signInWithGitHub}
-        className="rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-      >
-        Entrar com GitHub
-      </button>
+      <div className="flex flex-col gap-3">
+        {PROVIDERS.map(({ provider, label, className }) => (
+          <button
+            key={provider}
+            type="button"
+            onClick={() => signInWith(provider)}
+            className={`rounded-lg px-4 py-2.5 font-medium ${className}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div className="flex items-center gap-3 text-sm text-zinc-500">
         <span className="h-px flex-1 bg-zinc-300 dark:bg-zinc-700" />
