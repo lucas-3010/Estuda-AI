@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createBrowserSupabase } from "@/lib/supabase/client";
 
-type Provider = "google" | "apple" | "github";
+type Provider = "google" | "github";
 
 const PROVIDERS: { provider: Provider; label: string; className: string }[] = [
   {
@@ -11,11 +11,6 @@ const PROVIDERS: { provider: Provider; label: string; className: string }[] = [
     label: "Entrar com Google",
     className:
       "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800",
-  },
-  {
-    provider: "apple",
-    label: "Entrar com Apple",
-    className: "bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200",
   },
   {
     provider: "github",

@@ -35,14 +35,11 @@ Passo a passo para colocar no ar a versão com planos pagos. Faça tudo primeiro
 
 Taxas usadas no cálculo de preço: 3,99% + R$ 0,39 por cobrança de cartão nacional.
 
-## 4. Login com Google e Apple
+## 4. Login com Google
 
 - **Google**: no [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie um *ID do cliente
   OAuth* (aplicativo da Web) com o URI de redirecionamento `https://eerriupvtvlwhiznblbm.supabase.co/auth/v1/callback`.
   Cole o ID e o segredo em Supabase → **Authentication → Providers → Google**.
-- **Apple**: exige o Apple Developer Program (US$ 99/ano). Crie um *Services ID* com "Sign in with Apple", use o
-  mesmo callback do Supabase e gere a chave `.p8`. Preencha em **Authentication → Providers → Apple**. Enquanto não
-  configurar, o botão da Apple mostra erro ao clicar.
 
 ## 5. E-mail de lembrete (Resend)
 

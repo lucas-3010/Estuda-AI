@@ -31,7 +31,7 @@ flashcards, você revisa e edita o que quiser, e o algoritmo **FSRS** decide qua
 - **Sequência de dias e meta diária**, com lembrete diário por e-mail para assinantes.
 - **Importar e exportar do Anki** (texto separado por tabulação).
 - **Planos pagos com Stripe**: Grátis, Básico, Pro e Max, com cota mensal de gerações controlada no banco.
-- **Login** com Google, Apple, GitHub ou link mágico por e-mail.
+- **Login** com Google, GitHub ou link mágico por e-mail.
 
 ## Arquitetura
 
@@ -115,7 +115,7 @@ A CI do GitHub Actions roda lint, typecheck, testes unitários, build, testes do
    cujo callback é `https://<ref>.supabase.co/auth/v1/callback`.
 4. Importe o repositório na [Vercel](https://vercel.com/new) e configure as variáveis
    `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Supabase → Project Settings → API Keys).
-5. Configure Stripe, Google, Apple, Resend e as demais variáveis seguindo [docs/configuracao.md](docs/configuracao.md).
+5. Configure Stripe, Google, Resend e as demais variáveis seguindo [docs/configuracao.md](docs/configuracao.md).
 
 ## Licença
 
