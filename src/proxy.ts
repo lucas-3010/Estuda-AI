@@ -9,6 +9,8 @@ const PUBLIC_PATHS = [
   "/precos",
   "/termos",
   "/privacidade",
+  "/sobre",
+  "/contato",
   "/opengraph-image",
   "/apple-icon",
 ];

@@ -18,6 +18,9 @@ export function SiteHeader() {
         <Link href="/precos" className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
           Preços
         </Link>
+        <Link href="/sobre" className="hidden text-sm text-zinc-600 hover:text-zinc-900 md:inline dark:text-zinc-400 dark:hover:text-zinc-100">
+          Sobre
+        </Link>
         <Link
           href="/login"
           className="ml-auto rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800"
@@ -45,9 +48,10 @@ export function SiteFooter() {
         </nav>
         <nav aria-label="Institucional" className="flex flex-col gap-2">
           <span className="font-medium text-zinc-900 dark:text-zinc-100">Institucional</span>
+          <Link href="/sobre">Sobre</Link>
+          <Link href="/contato">Contato</Link>
           <Link href="/termos">Termos de uso</Link>
           <Link href="/privacidade">Política de privacidade</Link>
-          {SITE.supportEmail && <a href={`mailto:${SITE.supportEmail}`}>Contato</a>}
         </nav>
       </div>
       <p className="mx-auto mt-8 w-full max-w-5xl px-4 text-xs text-zinc-500">
