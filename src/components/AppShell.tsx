@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { Logo } from "@/components/Logo";
 import { createBrowserSupabase } from "@/lib/supabase/client";
 
 const LINKS = [
@@ -44,8 +45,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
         <nav className="mx-auto flex w-full max-w-5xl items-center gap-1 px-4 py-3">
-          <Link href="/" className="mr-3 font-semibold tracking-tight">
-            Estuda<span className="text-indigo-600 dark:text-indigo-400">-AI</span>
+          <Link href="/" className="mr-3" aria-label="Estuda-AI">
+            <Logo />
           </Link>
           <div className="hidden items-center gap-1 md:flex">
             {LINKS.map((link) => (

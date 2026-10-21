@@ -23,7 +23,7 @@ export function Pricing() {
               </h3>
               {featured && (
                 <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white">
-                  Mais escolhido
+                  Recomendado
                 </span>
               )}
             </div>
