@@ -14,10 +14,12 @@
     "test:db": "scripts/db-test-local.sh"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.0.0",
     "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "ts-fsrs": "^5.4.2"
+    "ts-fsrs": "^5.4.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
