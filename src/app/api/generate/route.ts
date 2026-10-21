@@ -14,6 +14,7 @@ const STATUS: Record<AiErrorCode, number> = {
   refused: 422,
   invalid_output: 502,
   network: 502,
+  unauthenticated: 401,
 };
 
 export async function POST(request: Request) {

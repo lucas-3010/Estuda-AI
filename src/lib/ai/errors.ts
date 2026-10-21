@@ -1,6 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-export type AiErrorCode = "no_key" | "bad_key" | "rate_limited" | "refused" | "invalid_output" | "network";
+export type AiErrorCode =
+  | "no_key"
+  | "bad_key"
+  | "rate_limited"
+  | "refused"
+  | "invalid_output"
+  | "network"
+  | "unauthenticated";
 
 const MESSAGES: Record<AiErrorCode, string> = {
   no_key: "Configure sua chave da Anthropic em Configurações para gerar planos.",
@@ -9,6 +16,7 @@ const MESSAGES: Record<AiErrorCode, string> = {
   refused: "A IA não gerou conteúdo para este tema. Tente reformular.",
   invalid_output: "A IA devolveu uma resposta incompleta. Tente de novo.",
   network: "Não foi possível falar com a IA. Verifique sua conexão e tente de novo.",
+  unauthenticated: "Sua sessão expirou. Entre de novo para continuar.",
 };
 
 export class AiError extends Error {
