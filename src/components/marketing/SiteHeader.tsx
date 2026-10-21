@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { SITE } from "@/lib/site";
+import { SITE, providerLine } from "@/lib/site";
 
 export function SiteHeader() {
   return (
@@ -51,7 +51,9 @@ export function SiteFooter() {
         </nav>
       </div>
       <p className="mx-auto mt-8 w-full max-w-5xl px-4 text-xs text-zinc-500">
-        © 2026 {SITE.name}. Pagamentos processados pela Stripe.
+        © 2026 {SITE.name}
+        {providerLine() && <> · {providerLine()}</>}
+        {SITE.supportEmail && <> · {SITE.supportEmail}</>}. Pagamentos processados pela Stripe.
       </p>
     </footer>
   );

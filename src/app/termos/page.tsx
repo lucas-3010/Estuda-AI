@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ContactLine, LegalPage } from "@/components/legal/LegalPage";
+import { ContactLine, LegalPage, ProviderLine } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
   title: "Termos de uso",
@@ -14,11 +14,16 @@ export default function TermsPage() {
         Estes termos valem para quem usa o Estuda-AI, um site de estudos com flashcards gerados por inteligência
         artificial e revisão por repetição espaçada. Ao criar uma conta, você concorda com eles.
       </p>
+      <p>
+        O Estuda-AI é oferecido por <ProviderLine />. Contato: <ContactLine />.
+      </p>
 
       <h2>1. Conta</h2>
       <p>
         Você entra com Google, GitHub ou um link enviado ao seu e-mail. A conta é pessoal: não compartilhe o acesso.
-        Você precisa ter 13 anos ou mais; menores de 18 anos devem usar o site com autorização dos responsáveis.
+        O plano Grátis pode ser usado a partir de 13 anos, com conhecimento dos responsáveis no caso de menores de 18
+        anos. A assinatura de planos pagos deve ser feita por maior de 18 anos ou pelo responsável legal, que assume
+        os pagamentos.
       </p>
 
       <h2>2. O que o serviço oferece</h2>
@@ -37,11 +42,12 @@ export default function TermsPage() {
       </p>
       <p>
         Você pode cancelar a qualquer momento em Configurações. O plano pago continua até o fim do período já pago e
-        não há multa. Se mudarmos um preço, avisamos antes e a mudança só vale a partir da próxima cobrança.
+        não há multa. Se mudarmos um preço, avisaremos por e-mail com pelo menos 30 dias de antecedência. Se não
+        concordar, você pode cancelar antes da nova cobrança, sem custo.
       </p>
       <p>
         Direito de arrependimento: se você assinou e se arrepender em até 7 dias da primeira cobrança, devolvemos o
-        valor integral, conforme o Código de Defesa do Consumidor. Peça <ContactLine />.
+        valor integral, conforme o art. 49 do Código de Defesa do Consumidor. Peça <ContactLine />.
       </p>
 
       <h2>4. Conteúdo gerado por IA</h2>
@@ -64,7 +70,11 @@ export default function TermsPage() {
         <li>Tentar burlar os limites dos planos, automatizar gerações ou revender o serviço;</li>
         <li>Atacar, sobrecarregar ou tentar acessar dados de outros usuários.</li>
       </ul>
-      <p>Contas que violarem estas regras podem ser suspensas.</p>
+      <p>
+        Contas que violarem estas regras podem ser suspensas. Antes de suspender, avisaremos por e-mail, salvo em caso
+        de risco à segurança de outros usuários. Se a suspensão for injustificada, devolveremos o valor proporcional ao
+        período não usado.
+      </p>
 
       <h2>7. Disponibilidade</h2>
       <p>
@@ -72,10 +82,10 @@ export default function TermsPage() {
         fornecedores. Se a geração com IA falhar, a geração não é descontada da sua cota.
       </p>
 
-      <h2>8. Responsabilidade</h2>
+      <h2>8. Natureza do serviço</h2>
       <p>
-        O serviço é oferecido como está. Na medida permitida pela lei, não respondemos por danos indiretos decorrentes
-        do uso do conteúdo gerado. Nada nestes termos limita os seus direitos como consumidor.
+        O Estuda-AI é uma ferramenta de apoio ao estudo. O conteúdo gerado por IA não substitui livros, aulas, a
+        legislação ou outras fontes oficiais. Nada nestes termos limita os seus direitos como consumidor.
       </p>
 
       <h2>9. Mudanças nestes termos</h2>
