@@ -58,6 +58,8 @@ Taxas usadas no cálculo de preço: 3,99% + R$ 0,39 por cobrança de cartão nac
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_BASICO`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_MAX` | passo 3 |
 | `NEXT_PUBLIC_SITE_URL` | `https://estuda-ai-s5we.vercel.app` (ou o seu domínio) |
 | `RESEND_API_KEY`, `REMINDER_FROM`, `CRON_SECRET` | passo 5 |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | e-mail de contato e de privacidade |
+| `NEXT_PUBLIC_LEGAL_NAME`, `NEXT_PUBLIC_LEGAL_DOCUMENT`, `NEXT_PUBLIC_LEGAL_ADDRESS` | quem oferece o serviço (nome ou razão social, CPF ou CNPJ, cidade/UF ou endereço), exigido pelo Decreto 7.962/2013 |
 
 Antes de cobrar de verdade: mude a Vercel para o plano **Pro** (o Hobby proíbe uso comercial) e publique termos de
 uso e política de privacidade (LGPD).

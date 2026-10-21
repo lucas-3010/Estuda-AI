@@ -1,5 +1,5 @@
 import { SiteFooter, SiteHeader } from "@/components/marketing/SiteHeader";
-import { SITE } from "@/lib/site";
+import { SITE, providerLine } from "@/lib/site";
 
 export function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -23,4 +23,10 @@ export function ContactLine() {
   ) : (
     <>pelo e-mail de contato indicado nesta página</>
   );
+}
+
+/** Quem é o fornecedor e o controlador dos dados, com o que estiver configurado. */
+export function ProviderLine() {
+  const line = providerLine();
+  return line ? <>{line}</> : <>o responsável pelo {SITE.name}</>;
 }

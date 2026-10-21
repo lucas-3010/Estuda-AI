@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ContactLine, LegalPage } from "@/components/legal/LegalPage";
+import { ContactLine, LegalPage, ProviderLine } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
   title: "Política de privacidade",
@@ -12,6 +12,13 @@ export default function PrivacyPage() {
       <p>
         Esta política explica quais dados pessoais o Estuda-AI trata, por que e quais são os seus direitos, de acordo
         com a Lei Geral de Proteção de Dados (Lei 13.709/2018, LGPD).
+      </p>
+
+      <h2>Quem é o responsável pelos seus dados</h2>
+      <p>
+        O controlador dos dados é <ProviderLine />. O canal para qualquer assunto de privacidade é <ContactLine />.
+        Por ser agente de tratamento de pequeno porte, não há encarregado (DPO) nomeado, conforme a Resolução CD/ANPD
+        nº 2/2022; este canal atende os titulares.
       </p>
 
       <h2>1. Dados que coletamos</h2>
@@ -54,7 +61,8 @@ export default function PrivacyPage() {
           <strong>Vercel</strong>: hospedagem do site;
         </li>
         <li>
-          <strong>Anthropic</strong>: modelo de IA que gera os cartões a partir do tema ou material enviado;
+          <strong>Anthropic</strong>: modelo de IA que gera os cartões a partir do tema ou material enviado. Pela
+          política comercial da API, a Anthropic não usa esse conteúdo para treinar seus modelos;
         </li>
         <li>
           <strong>Stripe</strong>: pagamentos;
@@ -64,8 +72,9 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        Essas transferências internacionais seguem as garantias previstas na LGPD, como cláusulas contratuais de
-        proteção de dados dos próprios fornecedores.
+        Esses fornecedores guardam ou processam dados principalmente nos Estados Unidos. As transferências
+        internacionais seguem as garantias da LGPD (art. 33), como as cláusulas contratuais de proteção de dados dos
+        próprios fornecedores.
       </p>
 
       <h2>4. Cookies</h2>
@@ -76,8 +85,8 @@ export default function PrivacyPage() {
 
       <h2>5. Por quanto tempo guardamos</h2>
       <p>
-        Guardamos seus dados enquanto a conta existir. Se você pedir a exclusão da conta, apagamos seus planos, cartões
-        e revisões. Registros de cobrança podem ser mantidos pelo prazo exigido em lei.
+        Guardamos seus dados enquanto a conta existir. Se você pedir a exclusão da conta, apagamos sua conta, planos,
+        cartões e revisões em até 15 dias. Registros de cobrança podem ser mantidos pelo prazo exigido em lei.
       </p>
 
       <h2>6. Seus direitos</h2>
@@ -102,7 +111,9 @@ export default function PrivacyPage() {
 
       <h2>8. Crianças e adolescentes</h2>
       <p>
-        O serviço é para maiores de 13 anos. Menores de 18 anos devem usá-lo com autorização dos responsáveis.
+        O serviço é para maiores de 13 anos. Não coletamos de propósito dados de menores de 13 anos; se isso acontecer,
+        apagaremos a conta ao saber. Menores de 18 anos devem usar o site com conhecimento dos responsáveis, e
+        assinaturas pagas devem ser feitas por maiores de 18 anos ou pelo responsável legal.
       </p>
 
       <h2>9. Mudanças nesta política</h2>
