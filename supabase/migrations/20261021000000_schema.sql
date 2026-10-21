@@ -124,3 +124,11 @@ create policy "dono lê configurações" on public.user_settings
 create policy "dono altera configurações" on public.user_settings
   for update to authenticated
   using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+-- Exposição explícita à Data API (tabelas novas não são expostas automaticamente).
+-- O acesso às linhas continua controlado pelas políticas RLS acima.
+grant select, insert, update, delete on public.study_plans to authenticated;
+grant select, insert, update, delete on public.plan_steps to authenticated;
+grant select, insert, update, delete on public.cards to authenticated;
+grant select on public.review_logs to authenticated;
+grant select, update on public.user_settings to authenticated;

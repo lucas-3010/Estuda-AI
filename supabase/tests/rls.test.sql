@@ -50,8 +50,8 @@ select is((select count(*)::int from study_plans), 1, 'delete de B não apagou o
 reset role;
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
-select is((select count(*)::int from cards), 0, 'anônimo não vê cartões');
-select is((select count(*)::int from review_logs), 0, 'anônimo não vê revisões');
+select throws_ok('select count(*) from cards', '42501', null, 'anônimo não acessa cartões');
+select throws_ok('select count(*) from review_logs', '42501', null, 'anônimo não acessa revisões');
 
 select * from finish();
 rollback;
