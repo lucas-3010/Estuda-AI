@@ -17,7 +17,8 @@ create policy "dono lê assinatura" on public.subscriptions
   for select to authenticated
   using ((select auth.uid()) = user_id);
 grant select on public.subscriptions to authenticated;
-revoke all on public.subscriptions from anon;
+revoke all on public.subscriptions from anon, authenticated;
+grant select on public.subscriptions to authenticated;
 
 -- Cada geração de IA consumida. A cota é contada por mês (UTC).
 create table public.ai_usage (
@@ -34,7 +35,8 @@ create policy "dono lê uso" on public.ai_usage
   for select to authenticated
   using ((select auth.uid()) = user_id);
 grant select on public.ai_usage to authenticated;
-revoke all on public.ai_usage from anon;
+revoke all on public.ai_usage from anon, authenticated;
+grant select on public.ai_usage to authenticated;
 
 -- Reserva uma geração antes de chamar a IA. Falha com 'quota_exceeded' quando a cota
 -- do mês acabou e com 'rate_limited' com mais de 5 gerações no último minuto.
