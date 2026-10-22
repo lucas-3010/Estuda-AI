@@ -18,12 +18,12 @@ describe("Botão de tema", () => {
     localStorage.setItem(THEME_KEY, "claro");
     const user = userEvent.setup();
     render(<ThemeToggle />);
-    const button = screen.getByRole("button", { name: /tema: claro/i });
+    const button = screen.getByRole("button", { name: /aparência: claro/i });
 
     await user.click(button);
     expect(localStorage.getItem(THEME_KEY)).toBe("escuro");
     expect(document.documentElement).toHaveClass("dark");
-    expect(screen.getByRole("button", { name: /tema: escuro/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /aparência: escuro/i })).toBeInTheDocument();
 
     await user.click(button);
     expect(localStorage.getItem(THEME_KEY)).toBe("sistema");

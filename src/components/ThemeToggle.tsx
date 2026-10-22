@@ -36,19 +36,22 @@ function Icon({ theme }: { theme: Theme }) {
   );
 }
 
-/** Alterna entre tema claro, escuro e automático (segue o sistema). */
+/**
+ * Alterna entre tema claro, escuro e automático (segue o sistema). O rótulo diz
+ * "Aparência" para não se confundir com o campo "Tema" (assunto de estudo).
+ */
 export function ThemeToggle({ withLabel = false, className = "" }: { withLabel?: boolean; className?: string }) {
   const theme = useSyncExternalStore(subscribeTheme, readTheme, () => "sistema" as Theme);
   return (
     <button
       type="button"
       onClick={() => saveTheme(nextTheme(theme))}
-      aria-label={`Tema: ${LABEL[theme]}. Clique para trocar`}
-      title={`Tema: ${LABEL[theme]}`}
+      aria-label={`Aparência: ${LABEL[theme]}. Clique para trocar`}
+      title={`Aparência: ${LABEL[theme]}`}
       className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${className}`}
     >
       <Icon theme={theme} />
-      {withLabel && <span>Tema: {LABEL[theme]}</span>}
+      {withLabel && <span>Aparência: {LABEL[theme]}</span>}
     </button>
   );
 }
