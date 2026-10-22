@@ -5,8 +5,11 @@ import type { QuizQuestion } from "@/lib/quiz";
 const LETTERS = ["A", "B", "C", "D", "E"];
 const MAX_TEXT = 20000;
 
-/** Frente com o enunciado e as alternativas; verso com a certa, a marcada e a explicação. */
-export function mistakeCard(question: QuizQuestion, picked: number): { front: string; back: string } {
+/**
+ * Frente com o enunciado e as alternativas; verso com a certa, a marcada e a explicação.
+ * Acerto no chute também entra: a pessoa ainda não sabe a questão.
+ */
+export function mistakeCard(question: QuizQuestion, picked: number, guessed = false): { front: string; back: string } {
   const options = question.options.map((option, i) => `**${LETTERS[i] ?? i + 1})** ${option}`).join("\n\n");
   const front = [question.source ? `*${question.source}*` : null, question.prompt, options]
     .filter(Boolean)
@@ -15,7 +18,7 @@ export function mistakeCard(question: QuizQuestion, picked: number): { front: st
   const wrong = `${LETTERS[picked] ?? picked + 1}) ${question.options[picked]}`;
   const back = [
     `**Resposta certa: ${right}**`,
-    `Você tinha marcado ${wrong}.`,
+    picked === question.answer && guessed ? "Você acertou no chute." : `Você tinha marcado ${wrong}.`,
     question.explanation ?? null,
     question.note ? `_${question.note}_` : null,
   ]

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AiError, aiErrorMessage, type AiErrorCode } from "@/lib/ai/errors";
 import { getAccount, type Account } from "@/lib/data/account";
@@ -33,7 +33,9 @@ type LawMeta = { lawName: string; sourceUrl: string | null; articles: LawResult[
 
 export function NewTopicFlow() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("topic");
+  // O radar de editais abre esta página com ?edital=<link do edital>.
+  const editalUrl = useSearchParams().get("edital");
+  const [mode, setMode] = useState<Mode>(editalUrl === null ? "topic" : "edital");
   const [account, setAccount] = useState<Account | null>(null);
   const [values, setValues] = useState<TopicValues>({ topic: "", level: "iniciante", context: "" });
   const [steps, setSteps] = useState<DraftStep[] | null>(null);
@@ -185,7 +187,11 @@ export function NewTopicFlow() {
             )}
           </div>
           {mode === "edital" ? (
-            <EditalFlow filesAllowed={account?.plan.files ?? false} onGenerated={refreshAccount} />
+            <EditalFlow
+              filesAllowed={account?.plan.files ?? false}
+              onGenerated={refreshAccount}
+              initialUrl={editalUrl ?? ""}
+            />
           ) : mode === "law" ? (
             <LawForm onSubmit={generateLaw} onCancel={() => abort.current?.abort()} busy={busy} />
           ) : mode === "topic" ? (

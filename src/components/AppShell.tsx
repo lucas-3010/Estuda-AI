@@ -9,6 +9,7 @@ import { createBrowserSupabase } from "@/lib/supabase/client";
 
 const LINKS = [
   { href: "/", label: "Início", icon: "🏠" },
+  { href: "/agenda", label: "Agenda", icon: "📅" },
   { href: "/novo", label: "Novo tema", icon: "✨" },
   { href: "/revisar", label: "Revisar", icon: "🔁" },
   { href: "/quiz", label: "Quiz", icon: "❓" },

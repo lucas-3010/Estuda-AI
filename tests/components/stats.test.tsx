@@ -6,6 +6,7 @@ const dueForecast = vi.fn();
 vi.mock("@/lib/data/reviews", () => ({
   reviewStats: (...a: unknown[]) => reviewStats(...a),
   dueForecast: (...a: unknown[]) => dueForecast(...a),
+  confidenceStats: async () => ({ sureTotal: 0, sureCorrect: 0, guessTotal: 0, guessCorrect: 0 }),
 }));
 vi.mock("@/lib/data/settings", () => ({ userTimeZone: () => "UTC" }));
 

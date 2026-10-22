@@ -12,6 +12,7 @@ import { shortDate } from "@/lib/exam";
 import { callGenerate } from "@/lib/generateClient";
 import { memoryBy, memoryOf, memoryTone, percent, type MemoryCard } from "@/lib/srs/thermometer";
 import type { EditalStepResult } from "@/lib/validation/plan";
+import { ApprovalChance } from "@/components/memory/ApprovalChance";
 import { MemoryBar, Thermometer } from "@/components/memory/Thermometer";
 import { btnPrimary, btnSecondary, card, muted } from "@/components/ui/styles";
 
@@ -185,6 +186,15 @@ export function EditalView() {
           cards={cards}
           newPerDay={data.newPerDay}
           retention={data.retention}
+        />
+      )}
+
+      {cards.length > 0 && (
+        <ApprovalChance
+          plan={plan}
+          cards={cards}
+          banca={edital.banca}
+          weights={new Map(edital.disciplines.flatMap((d, i) => (steps[i] ? [[steps[i].id, d.weight] as const] : [])))}
         />
       )}
 

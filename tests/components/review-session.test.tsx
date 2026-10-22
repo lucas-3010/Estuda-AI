@@ -53,7 +53,7 @@ describe("Sessão de revisão", () => {
     await answer(user);
     await user.keyboard("3");
     await screen.findByText("Pergunta dois");
-    expect(recordReview).toHaveBeenCalledWith("c1", 3, expect.objectContaining({ reps: 1 }));
+    expect(recordReview).toHaveBeenCalledWith("c1", 3, expect.objectContaining({ reps: 1 }), null);
   });
 
   test("teclas de nota antes de responder são ignoradas", async () => {
@@ -141,7 +141,7 @@ describe("Sessão de revisão", () => {
     expect(screen.getByText("Como chegar na resposta certa")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /errei/i }));
     await screen.findByText("Pergunta dois");
-    expect(recordReview).toHaveBeenCalledWith("c1", 1, expect.anything());
+    expect(recordReview).toHaveBeenCalledWith("c1", 1, expect.anything(), null);
     expect(screen.getByLabelText("Sua resposta")).toHaveValue("");
   });
 
@@ -166,7 +166,7 @@ describe("Sessão de revisão", () => {
     expect(recordReview).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await screen.findByText("Pergunta dois");
-    expect(recordReview).toHaveBeenCalledWith("c1", 1, expect.anything());
+    expect(recordReview).toHaveBeenCalledWith("c1", 1, expect.anything(), null);
     expect(requestCheck).not.toHaveBeenCalled();
   });
 

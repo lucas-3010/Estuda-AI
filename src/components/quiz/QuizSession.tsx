@@ -86,6 +86,9 @@ export function QuizSession() {
   const [filesAllowed, setFilesAllowed] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: "setup" });
   const [mistake, setMistake] = useState<MistakeState | null>(null);
+  // "Tenho certeza?": marcado antes de escolher a alternativa. Acerto no chute vai para o caderno de erros.
+  const [guessing, setGuessing] = useState(false);
+  const [luckyGuesses, setLuckyGuesses] = useState(0);
   const [savedMistakes, setSavedMistakes] = useState(0);
   // Plano do caderno: o do simulado; nas questões reais, o "Caderno de erros".
   const [mistakesPlan, setMistakesPlan] = useState<string | null>(null);
@@ -193,6 +196,7 @@ export function QuizSession() {
 
   async function start() {
     setSavedMistakes(0);
+    setLuckyGuesses(0);
     setMistake(null);
     if (source === "ai") return startExam();
     if (source === "enem") return startEnem();
@@ -222,13 +226,14 @@ export function QuizSession() {
     const question = phase.questions[phase.index];
     const right = option === question.answer;
     setPhase({ ...phase, picked: option, correct: phase.correct + (right ? 1 : 0) });
-    if (!right && MISTAKE_SOURCES.includes(source)) void saveMistake(question, option);
+    if (right && guessing) setLuckyGuesses((n) => n + 1);
+    if ((!right || guessing) && MISTAKE_SOURCES.includes(source)) void saveMistake(question, option, guessing);
   }
 
-  async function saveMistake(question: QuizQuestion, option: number) {
+  async function saveMistake(question: QuizQuestion, option: number, guessed: boolean) {
     setMistake("saving");
     try {
-      await addMistake(source === "ai" ? planId || null : null, mistakeCard(question, option));
+      await addMistake(source === "ai" ? planId || null : null, mistakeCard(question, option, guessed));
       setMistake("saved");
       setSavedMistakes((n) => n + 1);
       setMistakesPlan(source === "ai" ? planId || null : null);
@@ -245,6 +250,7 @@ export function QuizSession() {
       setPhase({ ...phase, index: phase.index + 1, picked: null });
     }
     setMistake(null);
+    setGuessing(false);
   }
 
   if (phase.kind === "playing") {
@@ -258,6 +264,12 @@ export function QuizSession() {
           {q.source && <p className={`mb-3 text-sm font-medium ${muted}`}>{q.source}</p>}
           <Markdown source={q.prompt} className="text-lg" />
         </div>
+        {phase.picked === null && (
+          <label className="flex items-center gap-2 self-start text-sm">
+            <input type="checkbox" checked={guessing} onChange={(e) => setGuessing(e.target.checked)} />
+            🎲 Estou chutando nesta questão
+          </label>
+        )}
         <ul className="flex flex-col gap-2">
           {q.options.map((option, i) => {
             const state =
@@ -286,7 +298,10 @@ export function QuizSession() {
         {phase.picked !== null && mistake && (
           <p aria-live="polite" className={`text-sm ${mistake === "failed" ? "text-red-700 dark:text-red-400" : muted}`}>
             {mistake === "saving" && "Guardando no caderno de erros…"}
-            {mistake === "saved" && "📒 Questão guardada no seu caderno de erros. Ela volta na revisão até você acertar."}
+            {mistake === "saved" &&
+              (phase.picked === q.answer
+                ? "🎲 Acerto no chute: a questão foi para o caderno de erros, para você aprender de verdade."
+                : "📒 Questão guardada no seu caderno de erros. Ela volta na revisão até você acertar.")}
             {mistake === "failed" && "Não foi possível guardar no caderno de erros."}
           </p>
         )}
@@ -324,9 +339,15 @@ export function QuizSession() {
         <p className={`mt-1 ${muted}`}>
           {phase.correct} de {phase.total} acertos
         </p>
+        {luckyGuesses > 0 && (
+          <p className={`mt-2 text-sm ${muted}`}>
+            🎲 {luckyGuesses === 1 ? "1 acerto foi" : `${luckyGuesses} acertos foram`} no chute. Sem eles, você teria{" "}
+            {Math.round(((phase.correct - luckyGuesses) / phase.total) * 100)}%.
+          </p>
+        )}
         {savedMistakes > 0 && (
           <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            📒 {savedMistakes === 1 ? "1 questão errada foi" : `${savedMistakes} questões erradas foram`} para o seu caderno de
+            📒 {savedMistakes === 1 ? "1 questão foi" : `${savedMistakes} questões foram`} para o seu caderno de
             erros e {savedMistakes === 1 ? "vai voltar" : "vão voltar"} na revisão.
           </p>
         )}

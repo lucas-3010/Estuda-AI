@@ -2,22 +2,31 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { listDueCandidates } from "@/lib/data/cards";
 import { listMemoryCards, paceOf, recentlyStartedCards } from "@/lib/data/memory";
-import { listPlansWithProgress, type PlanWithProgress } from "@/lib/data/plans";
-import { newCardsStudiedToday } from "@/lib/data/reviews";
-import { todayIn } from "@/lib/exam";
-import { getSettings, updateSettings, userTimeZone, type Settings } from "@/lib/data/settings";
-import { buildQueue } from "@/lib/srs/queue";
+import type { PlanWithProgress } from "@/lib/data/plans";
+import { loadToday } from "@/lib/data/today";
+import { daysBetween, todayIn } from "@/lib/exam";
+import { updateSettings, userTimeZone, type Settings } from "@/lib/data/settings";
 import type { MemoryCard } from "@/lib/srs/thermometer";
+import { ApprovalChance } from "@/components/memory/ApprovalChance";
 import { Thermometer } from "@/components/memory/Thermometer";
-import { btnPrimary, card, muted } from "@/components/ui/styles";
+import { VesperaNotice } from "@/components/review/ReviewLoader";
+import { EditalRadar } from "./EditalRadar";
+import { btnPrimary, btnSecondary, card, muted } from "@/components/ui/styles";
 import { PlanList } from "./PlanList";
 
 type State =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "ready"; plans: PlanWithProgress[]; dueToday: number; settings: Settings; memory: MemoryData | null };
+  | {
+      status: "ready";
+      plans: PlanWithProgress[];
+      dueToday: number;
+      settings: Settings;
+      memory: MemoryData | null;
+      weights: Map<string, number>;
+      vespera: PlanWithProgress[];
+    };
 
 /** Cartões de cada plano com o estado de memória e o ritmo de cartões novos por dia. */
 export type MemoryData = Map<string, { cards: MemoryCard[]; newPerDay: number }>;
@@ -48,18 +57,11 @@ export function HomeDashboard() {
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
-    const timeZone = userTimeZone();
-    Promise.all([listPlansWithProgress(), listDueCandidates(), getSettings(), newCardsStudiedToday(timeZone)])
-      .then(async ([plans, candidates, settings, studied]) => {
+    loadToday()
+      .then(async ({ plans, queue, settings, weights, vespera }) => {
         // O termômetro é um extra: se falhar, o painel continua funcionando.
         const memory = await loadMemory(plans).catch(() => null);
-        const queue = buildQueue(candidates, {
-          now: new Date(),
-          timeZone,
-          newPerDay: settings.newCardsPerDay,
-          newStudiedToday: studied,
-        });
-        setState({ status: "ready", plans, dueToday: queue.length, settings, memory });
+        setState({ status: "ready", plans, dueToday: queue.length, settings, memory, weights, vespera });
       })
       .catch(() => setState({ status: "error" }));
   }, []);
@@ -87,11 +89,20 @@ export function HomeDashboard() {
     );
   }
 
-  const hero = state.memory ? heroPlan(state.plans, state.memory, todayIn(userTimeZone())) : null;
+  const today = todayIn(userTimeZone());
+  const hero = state.memory ? heroPlan(state.plans, state.memory, today) : null;
   const heroMemory = hero ? state.memory?.get(hero.id) : undefined;
+  const soonest = [...state.vespera].sort((a, b) => a.examDate!.localeCompare(b.examDate!))[0];
+  const vesperaDays = soonest ? daysBetween(today, soonest.examDate!) : 0;
 
   return (
     <div className="flex flex-col gap-6">
+      <EditalRadar />
+      {soonest && (
+        <VesperaNotice
+          text={`${soonest.topic}: ${vesperaDays === 0 ? "a prova é hoje" : vesperaDays === 1 ? "a prova é amanhã" : `faltam ${vesperaDays} dias`}`}
+        />
+      )}
       {hero && heroMemory && (
         <Thermometer
           variant="hero"
@@ -103,6 +114,9 @@ export function HomeDashboard() {
           retention={state.settings.desiredRetention}
         />
       )}
+      {hero && heroMemory && (hero.kind === "edital" || hero.examDate) && (
+        <ApprovalChance key={hero.id} plan={hero} cards={heroMemory.cards} weights={state.weights} />
+      )}
       <section className={`${card} flex flex-wrap items-center justify-between gap-4`}>
         {state.dueToday > 0 ? (
           <>
@@ -110,9 +124,14 @@ export function HomeDashboard() {
               <p className="text-4xl font-semibold tabular-nums">{state.dueToday}</p>
               <p className={muted}>cartões para hoje</p>
             </div>
-            <Link href="/revisar" className={btnPrimary}>
-              Revisar agora
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/agenda" className={btnSecondary}>
+                Ver a agenda do dia
+              </Link>
+              <Link href="/revisar" className={btnPrimary}>
+                Revisar agora
+              </Link>
+            </div>
           </>
         ) : (
           <div>

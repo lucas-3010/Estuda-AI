@@ -5,6 +5,8 @@ export type Settings = {
   desiredRetention: number;
   dailyGoal: number;
   emailReminders: boolean;
+  /** Minutos de estudo em cada dia da semana (domingo primeiro), ou null antes de configurar a agenda. */
+  studyMinutes: number[] | null;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -12,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   desiredRetention: 0.9,
   dailyGoal: 20,
   emailReminders: true,
+  studyMinutes: null,
 };
 
 export function userTimeZone(): string {
@@ -28,7 +31,7 @@ async function currentUserId(): Promise<string> {
 export async function getSettings(): Promise<Settings> {
   const { data, error } = await createBrowserSupabase()
     .from("user_settings")
-    .select("new_cards_per_day, desired_retention, daily_goal, email_reminders")
+    .select("new_cards_per_day, desired_retention, daily_goal, email_reminders, study_minutes")
     .maybeSingle();
   if (error) throw error;
   if (!data) return DEFAULT_SETTINGS;
@@ -37,6 +40,7 @@ export async function getSettings(): Promise<Settings> {
     desiredRetention: data.desired_retention,
     dailyGoal: data.daily_goal,
     emailReminders: data.email_reminders,
+    studyMinutes: data.study_minutes,
   };
 }
 
@@ -50,6 +54,7 @@ export async function updateSettings(settings: Settings): Promise<void> {
         desired_retention: settings.desiredRetention,
         daily_goal: settings.dailyGoal,
         email_reminders: settings.emailReminders,
+        study_minutes: settings.studyMinutes,
         time_zone: userTimeZone(),
       },
       { onConflict: "user_id" },

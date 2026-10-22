@@ -23,6 +23,8 @@ export type Database = {
           share_token: string | null;
           exam_date: string | null;
           kind: string;
+          cutoff: number | null;
+          cutoff_note: string | null;
         };
         Insert: {
           id?: string;
@@ -34,6 +36,8 @@ export type Database = {
           share_token?: string | null;
           exam_date?: string | null;
           kind?: string;
+          cutoff?: number | null;
+          cutoff_note?: string | null;
         };
         Update: {
           id?: string;
@@ -45,6 +49,8 @@ export type Database = {
           share_token?: string | null;
           exam_date?: string | null;
           kind?: string;
+          cutoff?: number | null;
+          cutoff_note?: string | null;
         };
         Relationships: [];
       };
@@ -176,6 +182,7 @@ export type Database = {
           elapsed_days: number;
           scheduled_days: number;
           reviewed_at: string;
+          confident: boolean | null;
         };
         Insert: {
           id?: string;
@@ -189,6 +196,7 @@ export type Database = {
           elapsed_days: number;
           scheduled_days: number;
           reviewed_at?: string;
+          confident?: boolean | null;
         };
         Update: {
           id?: string;
@@ -202,6 +210,7 @@ export type Database = {
           elapsed_days?: number;
           scheduled_days?: number;
           reviewed_at?: string;
+          confident?: boolean | null;
         };
         Relationships: [
           {
@@ -222,6 +231,7 @@ export type Database = {
           time_zone: string;
           email_reminders: boolean;
           onboarded_at: string | null;
+          study_minutes: number[] | null;
         };
         Insert: {
           user_id: string;
@@ -231,6 +241,7 @@ export type Database = {
           time_zone?: string;
           email_reminders?: boolean;
           onboarded_at?: string | null;
+          study_minutes?: number[] | null;
         };
         Update: {
           user_id?: string;
@@ -240,6 +251,7 @@ export type Database = {
           time_zone?: string;
           email_reminders?: boolean;
           onboarded_at?: string | null;
+          study_minutes?: number[] | null;
         };
         Relationships: [];
       };
@@ -289,6 +301,42 @@ export type Database = {
         Row: { id: string; user_id: string; title: string; questions: Json; created_at: string };
         Insert: { id?: string; user_id?: string; title: string; questions: Json; created_at?: string };
         Update: { id?: string; user_id?: string; title?: string; questions?: Json; created_at?: string };
+        Relationships: [];
+      };
+      edital_watches: {
+        Row: {
+          id: string;
+          user_id: string;
+          query: string;
+          created_at: string;
+          checked_at: string | null;
+          found_title: string | null;
+          found_url: string | null;
+          found_at: string | null;
+          seen_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          query: string;
+          created_at?: string;
+          checked_at?: string | null;
+          found_title?: string | null;
+          found_url?: string | null;
+          found_at?: string | null;
+          seen_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          query?: string;
+          created_at?: string;
+          checked_at?: string | null;
+          found_title?: string | null;
+          found_url?: string | null;
+          found_at?: string | null;
+          seen_at?: string | null;
+        };
         Relationships: [];
       };
       editais: {
@@ -379,8 +427,12 @@ export type Database = {
         Returns: string;
       };
       record_review: {
-        Args: { p_card_id: string; p_rating: number; p_next: Json };
+        Args: { p_card_id: string; p_rating: number; p_next: Json; p_confident?: boolean | null };
         Returns: undefined;
+      };
+      confidence_stats: {
+        Args: { p_days: number };
+        Returns: { sure_total: number; sure_correct: number; guess_total: number; guess_correct: number }[];
       };
       review_stats: {
         Args: { p_days: number; p_tz: string };

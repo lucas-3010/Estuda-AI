@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { NewTopicFlow } from "@/components/plan/NewTopicFlow";
 
 export default function NewTopicPage() {
@@ -9,7 +10,9 @@ export default function NewTopicPage() {
           Diga o que quer aprender. A IA monta um plano em etapas com flashcards, e você revisa antes de salvar.
         </p>
       </div>
-      <NewTopicFlow />
+      <Suspense fallback={null}>
+        <NewTopicFlow />
+      </Suspense>
     </div>
   );
 }

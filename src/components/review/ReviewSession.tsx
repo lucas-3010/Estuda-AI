@@ -37,6 +37,8 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
   const [checkError, setCheckError] = useState<string | null>(null);
   // "Não sei": a resposta aparece, mas o cartão conta como erro.
   const [gaveUp, setGaveUp] = useState(false);
+  // "Tenho certeza?": marcado antes da resposta. Acerto no chute volta mais cedo.
+  const [confident, setConfident] = useState<boolean | null>(null);
   const answerRef = useRef<HTMLTextAreaElement>(null);
   const pending = useRef(false);
   // Momento em que o cartão atual apareceu, para medir o tempo da resposta.
@@ -69,7 +71,7 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
       const now = new Date();
       const next = schedule(current, rating, now, retention);
       try {
-        await recordReview(current.id, rating, next);
+        await recordReview(current.id, rating, next, gaveUp ? null : confident);
         const updated: CardRow = { ...current, ...next };
         const again = Date.parse(next.due) - now.getTime() <= REQUEUE_WINDOW_MS;
         setQueue((q) => (again ? [...q.slice(1), updated] : q.slice(1)));
@@ -79,6 +81,7 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         setChecked(null);
         setCheckError(null);
         setGaveUp(false);
+        setConfident(null);
         shownAt.current = performance.now();
       } catch {
         setError(true);
@@ -87,7 +90,7 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         setSaving(false);
       }
     },
-    [current, revealed, retention, gaveUp],
+    [current, revealed, retention, gaveUp, confident],
   );
 
   async function submitAnswer(event?: React.FormEvent, spoken?: string) {
@@ -114,7 +117,10 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
     setRevealed(true);
   }
 
-  const suggested = gaveUp ? 1 : checked ? suggestedRating(checked.correct, checked.ms) : null;
+  const luckyGuess = Boolean(checked?.correct && confident === false);
+  const confidentMiss = Boolean(checked && !checked.correct && confident === true);
+  // Acerto no chute não é saber: a nota sugerida é "Difícil", para o cartão voltar antes.
+  const suggested = gaveUp ? 1 : checked ? (luckyGuess ? 2 : suggestedRating(checked.correct, checked.ms)) : null;
 
   // As funções mudam a cada render; o modo áudio chama sempre a versão atual.
   const actions = useRef({ rate, submitAnswer, giveUp });
@@ -336,6 +342,29 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
             placeholder="Escreva com suas palavras e aperte Enter"
             className={input}
           />
+          <fieldset className="flex flex-wrap items-center gap-2 text-sm">
+            <legend className="sr-only">Você tem certeza da resposta?</legend>
+            <span className={muted}>Antes de ver:</span>
+            {[
+              { value: true, label: "✋ Tenho certeza" },
+              { value: false, label: "🎲 Estou chutando" },
+            ].map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                aria-pressed={confident === option.value}
+                disabled={checking}
+                onClick={() => setConfident((c) => (c === option.value ? null : option.value))}
+                className={`rounded-full border px-3 py-1 font-medium ${
+                  confident === option.value
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </fieldset>
           <div className="flex flex-col gap-2 sm:flex-row">
             <button type="submit" disabled={checking || !answer.trim()} className={`${btnPrimary} py-3 sm:flex-1`}>
               {checking ? "Corrigindo…" : "Responder"}
@@ -365,6 +394,16 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
               {!checked.correct && <h3 className="text-sm font-semibold">Por que está errada</h3>}
               <Markdown source={checked.feedback} />
             </div>
+          )}
+          {luckyGuess && (
+            <p className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              🎲 Você acertou no chute. Sugerimos <strong>Difícil</strong>: o cartão volta mais cedo, até você saber de verdade.
+            </p>
+          )}
+          {confidentMiss && (
+            <p className="mt-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-900 dark:bg-red-950 dark:text-red-200">
+              ✋ Você tinha certeza e errou: é o tipo de erro que mais custa na prova. Leia a explicação com calma.
+            </p>
           )}
           {checked.howTo && (
             <div className="mt-3">

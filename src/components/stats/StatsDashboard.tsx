@@ -5,6 +5,7 @@ import { dueForecast, reviewStats, type DayStat, type ForecastDay } from "@/lib/
 import { userTimeZone } from "@/lib/data/settings";
 import { card, muted } from "@/components/ui/styles";
 import { BarChart } from "./BarChart";
+import { Calibration } from "./Calibration";
 import { MemoryOverview } from "./MemoryOverview";
 import { WeakSpots } from "./WeakSpots";
 
@@ -79,6 +80,8 @@ export function StatsDashboard() {
       </section>
 
       <WeakSpots />
+
+      <Calibration />
 
       <section className={card}>
         <BarChart

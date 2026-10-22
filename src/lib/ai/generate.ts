@@ -2,7 +2,10 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { ZodType } from "zod";
 import { AiError } from "@/lib/ai/errors";
 import {
+  RESEARCH_SYSTEM_PROMPT,
   SYSTEM_PROMPT,
+  cutoffPrompt,
+  radarPrompt,
   editalPrompt,
   editalStepPrompt,
   examPrompt,
@@ -16,6 +19,10 @@ import {
 } from "@/lib/ai/prompt";
 import { AI_MODEL } from "@/lib/billing/plans";
 import {
+  cutoffJsonSchema,
+  cutoffSchema,
+  radarJsonSchema,
+  radarSchema,
   editalCardsJsonSchema,
   editalCardsSchema,
   editalJsonSchema,
@@ -37,6 +44,7 @@ import {
   type GeneratedLawPlan,
   type GenerateRequest,
   type GenerateResult,
+  type RadarResult,
   type Source,
 } from "@/lib/validation/plan";
 
@@ -53,6 +61,14 @@ export const WEB_FETCH_TOOL = {
   max_uses: 2,
   max_content_tokens: 50_000,
 } as const satisfies Anthropic.WebFetchTool20250910;
+
+/** Pesquisa na web feita pelos servidores da Anthropic (nota de corte e radar de editais). */
+export const WEB_SEARCH_TOOL = {
+  type: "web_search_20260318",
+  name: "web_search",
+  max_uses: 4,
+  user_location: { type: "approximate", country: "BR" },
+} as const satisfies Anthropic.WebSearchTool20260318;
 
 export type AiClient = Pick<Anthropic, "messages">;
 
@@ -90,7 +106,7 @@ async function generateStructured<T>(
   content: UserContent,
   jsonSchema: Record<string, unknown>,
   schema: ZodType<T>,
-  options: { webFetch?: boolean } = {},
+  options: { webFetch?: boolean; webSearch?: boolean } = {},
 ): Promise<T> {
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const messages: Anthropic.MessageParam[] = [{ role: "user", content }];
@@ -101,9 +117,10 @@ async function generateStructured<T>(
         .stream({
           model: MODEL,
           max_tokens: MAX_TOKENS,
-          system: SYSTEM_PROMPT,
+          system: options.webSearch ? RESEARCH_SYSTEM_PROMPT : SYSTEM_PROMPT,
           output_config: { effort: "medium", format: { type: "json_schema", schema: jsonSchema } },
           ...(options.webFetch ? { tools: [WEB_FETCH_TOOL] } : {}),
+          ...(options.webSearch ? { tools: [WEB_SEARCH_TOOL] } : {}),
           messages,
         })
         .finalMessage();
@@ -124,6 +141,11 @@ async function generateStructured<T>(
     }
   }
   throw new AiError("invalid_output");
+}
+
+/** Radar de editais: procura na web o edital publicado desde `since` (AAAA-MM-DD). */
+export function searchEdital(client: AiClient, query: string, since: string): Promise<RadarResult> {
+  return generateStructured(client, radarPrompt(query, since), radarJsonSchema, radarSchema, { webSearch: true });
 }
 
 /** Pedidos que a rota resolve com passos próprios (banco ou download da lei). */
@@ -213,6 +235,10 @@ export async function generate(client: AiClient, req: DirectRequest): Promise<Ge
             editalJsonSchema,
             editalSchema,
           );
+    case "cutoff":
+      return generateStructured(client, cutoffPrompt(req.exam, req.banca), cutoffJsonSchema, cutoffSchema, {
+        webSearch: true,
+      });
     case "import": {
       const exam = await generateStructured(
         client,
