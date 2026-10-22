@@ -11,7 +11,8 @@ export function PlanPreview({
 }: {
   steps: DraftStep[];
   onChange: (steps: DraftStep[]) => void;
-  onRegenerate: (stepKey: string) => void;
+  /** Sem esta função (lei seca), a etapa não pode ser gerada de novo. */
+  onRegenerate?: (stepKey: string) => void;
 }) {
   const updateStep = (key: string, patch: Partial<DraftStep>) =>
     onChange(steps.map((s) => (s.key === key ? { ...s, ...patch } : s)));
@@ -43,14 +44,16 @@ export function PlanPreview({
               <p className={muted}>{step.goal}</p>
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                className={btnSecondary}
-                disabled={step.regenerating}
-                onClick={() => onRegenerate(step.key)}
-              >
-                {step.regenerating ? "Gerando…" : "Gerar de novo"}
-              </button>
+              {onRegenerate && (
+                <button
+                  type="button"
+                  className={btnSecondary}
+                  disabled={step.regenerating}
+                  onClick={() => onRegenerate(step.key)}
+                >
+                  {step.regenerating ? "Gerando…" : "Gerar de novo"}
+                </button>
+              )}
               <button
                 type="button"
                 className={btnDanger}
@@ -64,6 +67,7 @@ export function PlanPreview({
           <ol className="mt-4 flex flex-col gap-3">
             {step.cards.map((c, i) => (
               <li key={c.key} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                {c.lawRef && <p className="mb-2 text-xs font-medium text-indigo-700 dark:text-indigo-400">⚖️ {c.lawRef}</p>}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="text-xs font-medium text-zinc-500">
                     Frente {i + 1}

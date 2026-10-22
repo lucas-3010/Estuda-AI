@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AiError, aiErrorMessage, type AiErrorCode } from "@/lib/ai/errors";
 import { getAccount, type Account } from "@/lib/data/account";
-import { savePlan } from "@/lib/data/plans";
+import { saveLawArticles } from "@/lib/data/law";
+import { savePlan, setPlanKind } from "@/lib/data/plans";
 import { callGenerate } from "@/lib/generateClient";
-import type { GeneratedPlan, GeneratedStep } from "@/lib/validation/plan";
+import type { GeneratedPlan, GeneratedStep, LawResult } from "@/lib/validation/plan";
+import { EditalFlow } from "./EditalFlow";
+import { LawForm, type LawRequest } from "./LawForm";
 import { btnPrimary, btnSecondary, muted } from "@/components/ui/styles";
 import { PlanPreview } from "./PlanPreview";
 import { SourceForm, type Material } from "./SourceForm";
@@ -16,7 +19,17 @@ import { toDraftStep, type DraftStep } from "./types";
 
 const UPGRADE_CODES: AiErrorCode[] = ["quota_exceeded", "files_not_allowed"];
 
-type Mode = "topic" | "source";
+type Mode = "topic" | "source" | "edital" | "law";
+
+const MODES: Array<[Mode, string]> = [
+  ["topic", "A partir de um tema"],
+  ["source", "Do meu material"],
+  ["edital", "Edital do concurso"],
+  ["law", "Lei seca"],
+];
+
+/** Dados da lei seca guardados até o plano ser salvo. */
+type LawMeta = { lawName: string; sourceUrl: string | null; articles: LawResult["articles"] };
 
 export function NewTopicFlow() {
   const router = useRouter();
@@ -27,6 +40,7 @@ export function NewTopicFlow() {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<{ text: string; upgrade: boolean } | null>(null);
+  const [law, setLaw] = useState<LawMeta | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   const refreshAccount = () => getAccount().then(setAccount).catch(() => undefined);
@@ -65,6 +79,23 @@ export function NewTopicFlow() {
     }
   }
 
+  async function generateLaw(input: LawRequest) {
+    setError(null);
+    setBusy(true);
+    abort.current = new AbortController();
+    try {
+      const result = await callGenerate<LawResult>({ mode: "law", ...input }, abort.current.signal);
+      setValues({ topic: `Lei seca: ${input.lawName}`.slice(0, 200), level: input.level, context: "" });
+      setLaw({ lawName: input.lawName, sourceUrl: result.sourceUrl, articles: result.articles });
+      setSteps(result.steps.map(toDraftStep));
+    } catch (e) {
+      if (!abort.current.signal.aborted) showError(e);
+    } finally {
+      setBusy(false);
+      void refreshAccount();
+    }
+  }
+
   async function regenerate(stepKey: string) {
     const step = steps?.find((s) => s.key === stepKey);
     if (!step) return;
@@ -89,7 +120,11 @@ export function NewTopicFlow() {
       title: s.title,
       goal: s.goal,
       cards: s.cards
-        .map((c) => ({ front: c.front.trim(), back: c.back.trim() }))
+        .map((c) => ({
+          front: c.front.trim(),
+          back: c.back.trim(),
+          ...(law ? { origin: "law" as const, law_ref: c.lawRef } : {}),
+        }))
         .filter((c) => c.front && c.back),
     }));
     if (cleaned.length === 0) {
@@ -103,7 +138,12 @@ export function NewTopicFlow() {
     setError(null);
     setSaving(true);
     try {
-      await savePlan({ ...request(), plan: { steps: cleaned } });
+      const planId = await savePlan({ ...request(), plan: { steps: cleaned } });
+      if (law) {
+        await setPlanKind(planId, "law");
+        // Sem os artigos guardados, o plano funciona; só não recebe aviso de mudança.
+        await saveLawArticles(planId, law.lawName, law.sourceUrl, law.articles).catch(() => undefined);
+      }
       router.push("/");
     } catch {
       setError({ text: "Não foi possível salvar o plano. Tente de novo.", upgrade: false });
@@ -121,13 +161,22 @@ export function NewTopicFlow() {
       {!steps && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div role="tablist" aria-label="Como criar" className="inline-flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
-              <button type="button" role="tab" aria-selected={mode === "topic"} className={tabClass(mode === "topic")} onClick={() => setMode("topic")}>
-                A partir de um tema
-              </button>
-              <button type="button" role="tab" aria-selected={mode === "source"} className={tabClass(mode === "source")} onClick={() => setMode("source")}>
-                Do meu material
-              </button>
+            <div role="tablist" aria-label="Como criar" className="inline-flex flex-wrap rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+              {MODES.map(([value, text]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === value}
+                  className={tabClass(mode === value)}
+                  onClick={() => {
+                    setMode(value);
+                    setError(null);
+                  }}
+                >
+                  {text}
+                </button>
+              ))}
             </div>
             {account && (
               <p className={muted}>
@@ -135,7 +184,11 @@ export function NewTopicFlow() {
               </p>
             )}
           </div>
-          {mode === "topic" ? (
+          {mode === "edital" ? (
+            <EditalFlow filesAllowed={account?.plan.files ?? false} onGenerated={refreshAccount} />
+          ) : mode === "law" ? (
+            <LawForm onSubmit={generateLaw} onCancel={() => abort.current?.abort()} busy={busy} />
+          ) : mode === "topic" ? (
             <TopicForm
               values={values}
               onChange={setValues}
@@ -177,11 +230,18 @@ export function NewTopicFlow() {
               Revise o plano para <strong>{values.topic.trim()}</strong>. Nada é salvo até você clicar em
               “Salvar plano”.
             </p>
-            <button type="button" className={btnSecondary} onClick={() => setSteps(null)}>
+            <button
+              type="button"
+              className={btnSecondary}
+              onClick={() => {
+                setSteps(null);
+                setLaw(null);
+              }}
+            >
               Voltar ao tema
             </button>
           </div>
-          <PlanPreview steps={steps} onChange={setSteps} onRegenerate={regenerate} />
+          <PlanPreview steps={steps} onChange={setSteps} onRegenerate={law ? undefined : regenerate} />
           <div className="sticky bottom-4 flex justify-end">
             <button type="button" className={`${btnPrimary} shadow-lg`} onClick={save} disabled={saving}>
               {saving ? "Salvando…" : "Salvar plano"}

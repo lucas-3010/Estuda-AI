@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CheckResult } from "@/lib/ai/checkAnswer";
 import { CheckError, formatDuration, requestCheck, suggestedRating } from "@/lib/checkAnswerClient";
 import { recordReview } from "@/lib/data/reviews";
+import { listen, parseVoiceCommand, speak, speakableText, speechSupport, stopSpeaking } from "@/lib/speech";
 import { previewIntervals, schedule, type Rating } from "@/lib/srs/fsrs";
 import type { CardRow } from "@/lib/supabase/database.types";
 import { Markdown } from "@/components/Markdown";
@@ -40,6 +41,13 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
   const pending = useRef(false);
   // Momento em que o cartão atual apareceu, para medir o tempo da resposta.
   const shownAt = useRef(0);
+  // Modo áudio: lê o cartão, ouve a resposta e a nota. `run` cancela a fala em andamento.
+  const [audio, setAudio] = useState(false);
+  // A revisão só aparece no navegador (depois de carregar os cartões), então dá para ler o suporte já aqui.
+  const [support] = useState(speechSupport);
+  const [listening, setListening] = useState(false);
+  const run = useRef(0);
+  const stopListening = useRef<() => void>(() => {});
 
   const current = queue[0];
   useEffect(() => {
@@ -82,9 +90,9 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
     [current, revealed, retention, gaveUp],
   );
 
-  async function submitAnswer(event?: React.FormEvent) {
+  async function submitAnswer(event?: React.FormEvent, spoken?: string) {
     event?.preventDefault();
-    const text = answer.trim();
+    const text = (spoken ?? answer).trim();
     if (!current || revealed || checking || !text) return;
     const ms = performance.now() - shownAt.current;
     setChecking(true);
@@ -107,6 +115,109 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
   }
 
   const suggested = gaveUp ? 1 : checked ? suggestedRating(checked.correct, checked.ms) : null;
+
+  // As funções mudam a cada render; o modo áudio chama sempre a versão atual.
+  const actions = useRef({ rate, submitAnswer, giveUp });
+  useEffect(() => {
+    actions.current = { rate, submitAnswer, giveUp };
+  });
+
+  useEffect(() => {
+    return () => {
+      run.current += 1;
+      stopSpeaking();
+      stopListening.current();
+    };
+  }, []);
+
+  function toggleAudio() {
+    run.current += 1;
+    stopSpeaking();
+    stopListening.current();
+    setListening(false);
+    setAudio((on) => !on);
+  }
+
+  /** Ouve uma frase; devolve null se o modo áudio foi interrompido nesse meio-tempo. */
+  async function hear(token: number): Promise<string | null> {
+    if (!support.listen) return null;
+    setListening(true);
+    const session = listen();
+    stopListening.current = session.stop;
+    const heard = await session.result;
+    setListening(false);
+    return token === run.current ? heard : null;
+  }
+
+  // Modo áudio, antes da resposta: lê a frente e ouve a resposta (ou "não sei", "repetir").
+  useEffect(() => {
+    if (!audio || !current || revealed || checking) return;
+    const token = ++run.current;
+    const front = speakableText(current.front);
+    void (async () => {
+      await speak(front);
+      for (let tries = 0; tries < 3 && token === run.current; tries++) {
+        const heard = await hear(token);
+        if (heard === null) return;
+        if (!heard) continue;
+        const command = parseVoiceCommand(heard);
+        if (command === "giveup") return actions.current.giveUp();
+        if (command === "repeat") {
+          await speak(front);
+          continue;
+        }
+        setAnswer(heard);
+        return void actions.current.submitAnswer(undefined, heard);
+      }
+    })();
+    return () => {
+      run.current += 1;
+      stopSpeaking();
+      stopListening.current();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audio, current?.id, revealed, checking]);
+
+  // Modo áudio, depois da resposta: diz se acertou, lê o verso e ouve a nota.
+  useEffect(() => {
+    if (!audio || !current || !revealed || checking) return;
+    const token = ++run.current;
+    const back = speakableText(current.back);
+    const result = gaveUp
+      ? `A resposta é: ${back}`
+      : checked
+        ? checked.correct
+          ? `Certo! A resposta esperada é: ${back}`
+          : `Errado. A resposta esperada é: ${back}. ${speakableText(checked.feedback)}`
+        : `A resposta esperada é: ${back}`;
+    const ask = !support.listen
+      ? ""
+      : gaveUp
+        ? "Diga continuar."
+        : suggested
+          ? `Diga a nota, ou próximo para ${RATINGS[suggested - 1].label}.`
+          : "Diga a nota: errei, difícil, bom ou fácil.";
+    void (async () => {
+      await speak(`${result} ${ask}`);
+      for (let tries = 0; tries < 3 && token === run.current; tries++) {
+        const heard = await hear(token);
+        if (heard === null) return;
+        if (!heard) continue;
+        const command = parseVoiceCommand(heard);
+        if (gaveUp) return void actions.current.rate(1);
+        if (command && typeof command === "object") return void actions.current.rate(command.rating);
+        if (command === "next" && suggested) return void actions.current.rate(suggested);
+        if (command === "repeat") await speak(result);
+        await speak("Não entendi. Diga errei, difícil, bom ou fácil.");
+      }
+    })();
+    return () => {
+      run.current += 1;
+      stopSpeaking();
+      stopListening.current();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audio, current?.id, revealed, checking, checked, gaveUp]);
 
   // O campo de resposta recebe o foco a cada cartão novo.
   useEffect(() => {
@@ -162,11 +273,37 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
 
   return (
     <div className="flex flex-col gap-4">
-      <p className={muted} aria-live="polite">
-        {queue.length} {queue.length === 1 ? "cartão restante" : "cartões restantes"}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={muted} aria-live="polite">
+          {queue.length} {queue.length === 1 ? "cartão restante" : "cartões restantes"}
+        </p>
+        {support.speak && (
+          <button
+            type="button"
+            aria-pressed={audio}
+            onClick={toggleAudio}
+            className={`rounded-full border px-3 py-1 text-sm font-medium ${
+              audio
+                ? "border-indigo-600 bg-indigo-600 text-white"
+                : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            }`}
+          >
+            🎧 Modo áudio {audio ? "ligado" : ""}
+          </button>
+        )}
+      </div>
+      {audio && (
+        <p role="status" className="rounded-lg bg-indigo-50 px-4 py-2 text-sm text-indigo-900 dark:bg-indigo-950 dark:text-indigo-100">
+          {listening
+            ? "🎙️ Ouvindo… fale a resposta, ou diga \"não sei\" ou \"repetir\"."
+            : support.listen
+              ? "O site lê o cartão e ouve sua resposta. Depois, diga a nota: errei, difícil, bom ou fácil."
+              : "Seu navegador lê os cartões em voz alta, mas não ouve a resposta: responda digitando. No Chrome, dá para responder falando."}
+        </p>
+      )}
 
       <article className={`${card} min-h-48`}>
+        <CardBadge card={current} />
         <Markdown source={current.front} className="text-lg" />
         {revealed && (
           <>
@@ -291,4 +428,23 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
       )}
     </div>
   );
+}
+
+/** Selo do cartão: veio do caderno de erros ou da lei seca (com o artigo). */
+export function CardBadge({ card: row }: { card: CardRow }) {
+  if (row.origin === "mistake") {
+    return (
+      <p className="mb-3 inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        📒 Caderno de erros
+      </p>
+    );
+  }
+  if (row.origin === "law") {
+    return (
+      <p className="mb-3 inline-flex rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200">
+        ⚖️ Lei seca{row.law_ref ? ` · ${row.law_ref}` : ""}
+      </p>
+    );
+  }
+  return null;
 }

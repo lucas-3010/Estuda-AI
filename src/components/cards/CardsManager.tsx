@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createCard, deleteCard, listCards, updateCard } from "@/lib/data/cards";
 import { listPlansWithProgress, type PlanWithProgress } from "@/lib/data/plans";
@@ -18,8 +19,10 @@ function normalize(text: string) {
 export function CardsManager() {
   const [cards, setCards] = useState<CardRow[] | null>(null);
   const [plans, setPlans] = useState<PlanWithProgress[]>([]);
-  const [planId, setPlanId] = useState("");
-  const [query, setQuery] = useState("");
+  const params = useSearchParams();
+  // Links como /cartoes?plano=...&q=Art. 5 abrem a lista já filtrada.
+  const [planId, setPlanId] = useState(params.get("plano") ?? "");
+  const [query, setQuery] = useState(params.get("q") ?? "");
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

@@ -10,7 +10,10 @@ export type AiErrorCode =
   | "network"
   | "unauthenticated"
   | "source_unreadable"
-  | "no_questions";
+  | "no_questions"
+  | "law_too_long"
+  | "law_unreadable"
+  | "already_generated";
 
 const MESSAGES: Record<AiErrorCode, string> = {
   quota_exceeded: "Você usou todas as gerações com IA do seu plano este mês. Troque de plano para gerar mais.",
@@ -23,6 +26,11 @@ const MESSAGES: Record<AiErrorCode, string> = {
   unauthenticated: "Sua sessão expirou. Entre de novo para continuar.",
   source_unreadable:
     "Não consegui ler esse link. Confira se a página é pública. Se for vídeo ou página com login, copie o texto ou a transcrição e use \"Colar texto\".",
+  law_too_long:
+    "Esse trecho da lei é grande demais para uma vez só. Escolha um intervalo de artigos menor, como \"1 a 30\".",
+  law_unreadable:
+    "Não consegui ler a lei nesse link. Use o link da lei no site do Planalto ou do Senado, ou cole o texto dos artigos.",
+  already_generated: "Os cartões dessa disciplina já foram gerados.",
   no_questions: "Não encontrei questões de múltipla escolha nesse material. Confira se enviou a prova certa e se ela está legível.",
 };
 

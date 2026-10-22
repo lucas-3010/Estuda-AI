@@ -5,6 +5,7 @@ import { dueForecast, reviewStats, type DayStat, type ForecastDay } from "@/lib/
 import { userTimeZone } from "@/lib/data/settings";
 import { card, muted } from "@/components/ui/styles";
 import { BarChart } from "./BarChart";
+import { MemoryOverview } from "./MemoryOverview";
 import { WeakSpots } from "./WeakSpots";
 
 function shortDate(day: string) {
@@ -61,6 +62,8 @@ export function StatsDashboard() {
           <p className="mt-1 text-3xl font-semibold tabular-nums">{activeDays}/30</p>
         </div>
       </div>
+
+      <MemoryOverview />
 
       <section className={card}>
         <BarChart

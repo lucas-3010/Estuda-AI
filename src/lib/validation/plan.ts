@@ -68,6 +68,23 @@ const topicFields = {
   context: z.string().trim().max(LIMITS.contextMax).optional(),
 };
 
+/** Edital vira plano: limites da leitura do edital. */
+export const EDITAL_LIMITS = {
+  disciplinesMax: 12,
+  topicsMax: 40,
+  topicMax: 300,
+  /** Cartões gerados por disciplina. */
+  cardsMin: 5,
+  cardsMax: 15,
+} as const;
+
+/** Lei seca: tamanho do texto da lei enviado à IA (um trecho, não o código inteiro). */
+export const LAW_LIMITS = {
+  textMax: 60_000,
+  stepsMax: 8,
+  cardsMax: 12,
+} as const;
+
 /** Bancas e formatos de prova do simulado. */
 export const BANCAS = {
   enem: "ENEM",
@@ -121,6 +138,27 @@ export const generateRequestSchema = z.discriminatedUnion("mode", [
     mode: z.literal("import"),
     source: sourceSchema,
     answerKey: z.string().trim().max(LIMITS.answerKeyMax).optional(),
+  }),
+  z.object({
+    mode: z.literal("edital"),
+    source: z.union([sourceSchema, z.object({ kind: z.literal("link"), url: httpUrl })]),
+    banca: z.string().trim().max(100).optional(),
+  }),
+  z.object({
+    mode: z.literal("edital_step"),
+    editalId: z.string().uuid(),
+    index: z.number().int().min(0).max(EDITAL_LIMITS.disciplinesMax - 1),
+  }),
+  z.object({
+    mode: z.literal("law"),
+    level: z.enum(LEVELS),
+    source: z.union([
+      z.object({ kind: z.literal("text"), text: z.string().trim().min(50).max(LAW_LIMITS.textMax) }),
+      z.object({ kind: z.literal("link"), url: httpUrl }),
+    ]),
+    lawName: z.string().trim().min(2).max(200),
+    articles: z.string().trim().max(100).optional(),
+    banca: z.enum(BANCA_IDS).optional(),
   }),
 ]);
 
@@ -176,7 +214,61 @@ export const importedExamSchema = z.object({
 export type ImportedExam = z.infer<typeof importedExamSchema>;
 export type ImportedQuestion = z.infer<typeof importedQuestionSchema>;
 
-export type GenerateResult = GeneratedPlan | GeneratedStep | GeneratedReinforce | GeneratedExam | ImportedExam;
+/** Edital lido pela IA: concurso, banca e disciplinas com peso e tópicos. */
+export const editalDisciplineSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  weight: z.number().int().min(1).max(5),
+  topics: z
+    .array(z.string().trim().min(1).max(EDITAL_LIMITS.topicMax))
+    .min(1)
+    .max(EDITAL_LIMITS.topicsMax),
+});
+export type EditalDiscipline = z.infer<typeof editalDisciplineSchema>;
+
+export const editalSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  banca: z.string().trim().max(100),
+  disciplines: z.array(editalDisciplineSchema).min(1).max(EDITAL_LIMITS.disciplinesMax),
+});
+export type GeneratedEdital = z.infer<typeof editalSchema>;
+/** Resposta da rota: o edital lido e o id guardado no banco. */
+export type EditalResult = GeneratedEdital & { editalId: string };
+
+export const editalCardsSchema = z.object({
+  cards: z
+    .array(cardSchema.extend({ topic: z.string().trim().min(1).max(EDITAL_LIMITS.topicMax) }))
+    .min(EDITAL_LIMITS.cardsMin)
+    .max(EDITAL_LIMITS.cardsMax + 5),
+});
+export type EditalStepResult = { stepId: string; cards: number };
+
+/** Lei seca: plano em que cada cartão cita o artigo, mais o texto dos artigos para vigiar mudanças. */
+export const lawCardSchema = cardSchema.extend({ law_ref: z.string().trim().min(1).max(200) });
+export const lawPlanSchema = z.object({
+  steps: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1),
+        goal: z.string().trim().min(1),
+        cards: z.array(lawCardSchema).min(3).max(LAW_LIMITS.cardsMax + 3),
+      }),
+    )
+    .min(1)
+    .max(LAW_LIMITS.stepsMax),
+});
+export type GeneratedLawPlan = z.infer<typeof lawPlanSchema>;
+export type LawArticleSnapshot = { article: string; text: string };
+export type LawResult = GeneratedLawPlan & { articles: LawArticleSnapshot[]; sourceUrl: string | null };
+
+export type GenerateResult =
+  | GeneratedPlan
+  | GeneratedStep
+  | GeneratedReinforce
+  | GeneratedExam
+  | ImportedExam
+  | EditalResult
+  | EditalStepResult
+  | LawResult;
 
 // JSON Schema enviado à API. Os limites de quantidade ficam de fora porque a saída
 // estruturada não aceita todos eles; a validação completa é feita com zod depois.
@@ -255,5 +347,74 @@ export const importedExamJsonSchema = {
     },
   },
   required: ["title", "questions"],
+  additionalProperties: false,
+} as const;
+
+export const editalJsonSchema = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    banca: { type: "string" },
+    disciplines: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          weight: { type: "integer" },
+          topics: { type: "array", items: { type: "string" } },
+        },
+        required: ["name", "weight", "topics"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["title", "banca", "disciplines"],
+  additionalProperties: false,
+} as const;
+
+export const editalCardsJsonSchema = {
+  type: "object",
+  properties: {
+    cards: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { front: { type: "string" }, back: { type: "string" }, topic: { type: "string" } },
+        required: ["front", "back", "topic"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["cards"],
+  additionalProperties: false,
+} as const;
+
+export const lawPlanJsonSchema = {
+  type: "object",
+  properties: {
+    steps: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          goal: { type: "string" },
+          cards: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { front: { type: "string" }, back: { type: "string" }, law_ref: { type: "string" } },
+              required: ["front", "back", "law_ref"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["title", "goal", "cards"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["steps"],
   additionalProperties: false,
 } as const;
