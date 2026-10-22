@@ -91,6 +91,8 @@ describe("Novo tema", () => {
 
   test("editar o verso de um cartão e salvar envia o texto editado", async () => {
     const user = await generatePlan();
+    expect(screen.queryByDisplayValue("Fundamentos resposta 1")).toBeNull();
+    await user.click(screen.getAllByRole("button", { name: "Mostrar verso" })[0]);
     const back = screen.getByDisplayValue("Fundamentos resposta 1");
     await user.clear(back);
     await user.type(back, "Resposta corrigida");

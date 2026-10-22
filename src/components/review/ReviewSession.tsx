@@ -33,6 +33,9 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState<Checked | null>(null);
   const [checkError, setCheckError] = useState<string | null>(null);
+  // "Não sei": a resposta aparece, mas o cartão conta como erro.
+  const [gaveUp, setGaveUp] = useState(false);
+  const answerRef = useRef<HTMLTextAreaElement>(null);
   const pending = useRef(false);
   // Momento em que o cartão atual apareceu, para medir o tempo da resposta.
   const shownAt = useRef(0);
@@ -50,6 +53,7 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
   const rate = useCallback(
     async (rating: Rating) => {
       if (!current || !revealed || pending.current) return;
+      if (gaveUp && rating !== 1) return;
       pending.current = true;
       setSaving(true);
       setError(false);
@@ -65,6 +69,7 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         setAnswer("");
         setChecked(null);
         setCheckError(null);
+        setGaveUp(false);
         shownAt.current = performance.now();
       } catch {
         setError(true);
@@ -73,7 +78,7 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         setSaving(false);
       }
     },
-    [current, revealed, retention],
+    [current, revealed, retention, gaveUp],
   );
 
   async function submitAnswer(event?: React.FormEvent) {
@@ -94,20 +99,25 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
     }
   }
 
-  const suggested = checked ? suggestedRating(checked.correct, checked.ms) : null;
+  function giveUp() {
+    if (checking) return;
+    setGaveUp(true);
+    setRevealed(true);
+  }
+
+  const suggested = gaveUp ? 1 : checked ? suggestedRating(checked.correct, checked.ms) : null;
+
+  // O campo de resposta recebe o foco a cada cartão novo.
+  useEffect(() => {
+    if (!revealed) answerRef.current?.focus();
+  }, [revealed, queue]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (target?.closest("input, textarea, select")) return;
-      if (event.key === " " || event.key === "Enter") {
-        if (!revealed) {
-          event.preventDefault();
-          setRevealed(true);
-        }
-        return;
-      }
-      if (["1", "2", "3", "4"].includes(event.key)) {
+      // Não há atalho para ver o verso: a resposta só aparece depois de uma tentativa ou do "Não sei".
+      if (revealed && ["1", "2", "3", "4"].includes(event.key)) {
         event.preventDefault();
         void rate(Number(event.key) as Rating);
       }
@@ -172,6 +182,7 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
             Sua resposta
           </label>
           <textarea
+            ref={answerRef}
             id="resposta"
             rows={3}
             value={answer}
@@ -191,8 +202,8 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
             <button type="submit" disabled={checking || !answer.trim()} className={`${btnPrimary} py-3 sm:flex-1`}>
               {checking ? "Corrigindo…" : "Responder"}
             </button>
-            <button type="button" disabled={checking} className={`${btnSecondary} py-3`} onClick={() => setRevealed(true)}>
-              Não sei, mostrar resposta <span className="ml-2 text-xs opacity-75">(espaço)</span>
+            <button type="button" disabled={checking} className={`${btnSecondary} py-3`} onClick={giveUp}>
+              Não sei <span className="ml-1 text-xs opacity-75">(conta como erro)</span>
             </button>
           </div>
         </form>
@@ -226,6 +237,12 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         </section>
       )}
 
+      {revealed && gaveUp && (
+        <p role="status" className="rounded-lg bg-zinc-100 px-4 py-3 dark:bg-zinc-800">
+          Sem problema. Leia a resposta com atenção: este cartão volta daqui a pouco para você tentar de novo.
+        </p>
+      )}
+
       {revealed && checkError && (
         <p role="status" className="rounded-lg bg-amber-50 px-4 py-3 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
           {checkError}
@@ -238,7 +255,13 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         </p>
       )}
 
-      {revealed && (
+      {revealed && gaveUp && (
+        <button type="button" disabled={saving} onClick={() => rate(1)} className={`${btnPrimary} w-full py-3`}>
+          Continuar
+        </button>
+      )}
+
+      {revealed && !gaveUp && (
         <div>
           <p className={`mb-2 ${muted}`}>
             {suggested ? "Como foi? A nota sugerida está destacada." : "Como foi? Avalie para agendar a próxima revisão."}
