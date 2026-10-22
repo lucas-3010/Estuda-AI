@@ -270,6 +270,12 @@ export type Database = {
         Update: { id?: never; user_id?: string; created_at?: string };
         Relationships: [];
       };
+      practice_exams: {
+        Row: { id: string; user_id: string; title: string; questions: Json; created_at: string };
+        Insert: { id?: string; user_id?: string; title: string; questions: Json; created_at?: string };
+        Update: { id?: string; user_id?: string; title?: string; questions?: Json; created_at?: string };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {

@@ -40,6 +40,11 @@ export default function PrivacyPage() {
           perguntas que faz ao tutor. Eles são enviados à IA só para essa resposta e não são guardados no Estuda-AI.
           Páginas de links são lidas pelos servidores da Anthropic.
         </li>
+        <li>
+          <strong>Provas importadas:</strong> quando você importa uma prova antiga para o quiz, o arquivo não é
+          guardado, mas as questões que a IA separou ficam salvas na sua conta, visíveis só para você, até você
+          apagá-las.
+        </li>
       </ul>
       <p>
         <strong>Baralhos compartilhados:</strong> se você criar um link para um plano, qualquer pessoa com o link vê o

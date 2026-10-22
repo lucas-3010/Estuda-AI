@@ -56,11 +56,16 @@ export default function TermsPage() {
         de estudar e confira leis, datas e números em fontes oficiais. O Estuda-AI não garante aprovação em provas ou
         concursos.
       </p>
+      <p>
+        As questões do ENEM no quiz são as das provas oficiais publicadas pelo INEP, obtidas do projeto aberto API
+        ENEM (enem.dev). Em provas importadas sem gabarito, a resposta é sugerida pela IA e pode estar errada.
+      </p>
 
       <h2>5. Seu material e seus cartões</h2>
       <p>
         Você continua dono do que envia e dos cartões que cria. Só envie material que você tem direito de usar para
-        estudo. Você pode exportar seus cartões a qualquer momento.
+        estudo, como provas antigas que você baixou ou recebeu. As provas importadas ficam só na sua conta e não são
+        compartilhadas. Você pode exportar seus cartões a qualquer momento.
       </p>
 
       <h2>6. Uso aceitável</h2>
