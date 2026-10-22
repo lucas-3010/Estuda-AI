@@ -36,10 +36,16 @@ export default function PrivacyPage() {
           cartão ficam só com a Stripe; o Estuda-AI nunca os recebe.
         </li>
         <li>
-          <strong>Material enviado:</strong> textos, PDFs e fotos que você manda para gerar cartões. Eles são enviados
-          à IA só para essa geração e não são guardados no Estuda-AI.
+          <strong>Material enviado:</strong> textos, PDFs, fotos e links que você manda para gerar cartões, e as
+          perguntas que faz ao tutor. Eles são enviados à IA só para essa resposta e não são guardados no Estuda-AI.
+          Páginas de links são lidas pelos servidores da Anthropic.
         </li>
       </ul>
+      <p>
+        <strong>Baralhos compartilhados:</strong> se você criar um link para um plano, qualquer pessoa com o link vê o
+        tema, as etapas e os cartões, e pode copiá-los para a própria conta. Seu nome, seu e-mail e seu progresso não
+        aparecem. O link não é indexado por buscadores e você pode desativá-lo a qualquer momento.
+      </p>
 
       <h2>2. Para que usamos</h2>
       <ul>

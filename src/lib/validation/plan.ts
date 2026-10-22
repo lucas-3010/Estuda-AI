@@ -64,6 +64,33 @@ const topicFields = {
   context: z.string().trim().max(LIMITS.contextMax).optional(),
 };
 
+/** Bancas e formatos de prova do simulado. */
+export const BANCAS = {
+  enem: "ENEM",
+  cebraspe: "Cebraspe (certo ou errado)",
+  fgv: "FGV",
+  fcc: "FCC",
+  vunesp: "Vunesp",
+  vestibular: "Vestibular",
+  faculdade: "Prova de faculdade",
+} as const;
+export type Banca = keyof typeof BANCAS;
+export const BANCA_IDS = Object.keys(BANCAS) as [Banca, ...Banca[]];
+
+export const EXAM_SIZES = [5, 10] as const;
+
+const httpUrl = z
+  .string()
+  .trim()
+  .max(2000)
+  .url()
+  .refine((value) => /^https?:\/\//i.test(value), "Use um link que comece com http ou https");
+
+const cardInput = z.object({
+  front: z.string().trim().min(1).max(1000),
+  back: z.string().trim().min(1).max(2000),
+});
+
 export const generateRequestSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("plan"), ...topicFields }),
   z.object({
@@ -72,10 +99,46 @@ export const generateRequestSchema = z.discriminatedUnion("mode", [
     step: z.object({ title: z.string().trim().min(1).max(200), goal: z.string().trim().min(1).max(500) }),
   }),
   z.object({ mode: z.literal("source"), ...topicFields, source: sourceSchema }),
+  z.object({ mode: z.literal("link"), ...topicFields, url: httpUrl }),
+  z.object({
+    mode: z.literal("reinforce"),
+    ...topicFields,
+    step: z.object({ title: z.string().trim().min(1).max(200), goal: z.string().trim().min(1).max(500) }),
+    missed: z.array(cardInput).min(1).max(15),
+  }),
+  z.object({
+    mode: z.literal("exam"),
+    ...topicFields,
+    banca: z.enum(BANCA_IDS),
+    count: z.union([z.literal(5), z.literal(10)]),
+    cards: z.array(cardInput).min(4).max(40),
+  }),
 ]);
 
 export type GenerateRequest = z.infer<typeof generateRequestSchema>;
-export type GenerateResult = GeneratedPlan | GeneratedStep;
+
+/** Cartões extras para os assuntos em que a pessoa mais erra. */
+export const reinforceSchema = z.object({
+  cards: z.array(cardSchema).min(3).max(10),
+});
+export type GeneratedReinforce = z.infer<typeof reinforceSchema>;
+
+export const examQuestionSchema = z
+  .object({
+    statement: z.string().trim().min(1),
+    options: z.array(z.string().trim().min(1)).min(2).max(5),
+    answer: z.number().int().min(0),
+    explanation: z.string().trim().min(1),
+  })
+  .refine((q) => q.answer < q.options.length, "Resposta fora das alternativas");
+
+export const examSchema = z.object({
+  questions: z.array(examQuestionSchema).min(1).max(10),
+});
+export type GeneratedExam = z.infer<typeof examSchema>;
+export type ExamQuestion = z.infer<typeof examQuestionSchema>;
+
+export type GenerateResult = GeneratedPlan | GeneratedStep | GeneratedReinforce | GeneratedExam;
 
 // JSON Schema enviado à API. Os limites de quantidade ficam de fora porque a saída
 // estruturada não aceita todos eles; a validação completa é feita com zod depois.
@@ -101,5 +164,34 @@ export const planJsonSchema = {
   type: "object",
   properties: { steps: { type: "array", items: stepJsonSchema } },
   required: ["steps"],
+  additionalProperties: false,
+} as const;
+
+export const reinforceJsonSchema = {
+  type: "object",
+  properties: { cards: { type: "array", items: cardJsonSchema } },
+  required: ["cards"],
+  additionalProperties: false,
+} as const;
+
+export const examJsonSchema = {
+  type: "object",
+  properties: {
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          statement: { type: "string" },
+          options: { type: "array", items: { type: "string" } },
+          answer: { type: "integer" },
+          explanation: { type: "string" },
+        },
+        required: ["statement", "options", "answer", "explanation"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["questions"],
   additionalProperties: false,
 } as const;

@@ -20,6 +20,8 @@ export type Database = {
           level: string;
           context: string | null;
           created_at: string;
+          share_token: string | null;
+          exam_date: string | null;
         };
         Insert: {
           id?: string;
@@ -28,6 +30,8 @@ export type Database = {
           level: string;
           context?: string | null;
           created_at?: string;
+          share_token?: string | null;
+          exam_date?: string | null;
         };
         Update: {
           id?: string;
@@ -36,6 +40,8 @@ export type Database = {
           level?: string;
           context?: string | null;
           created_at?: string;
+          share_token?: string | null;
+          exam_date?: string | null;
         };
         Relationships: [];
       };
@@ -267,6 +273,27 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      shared_plan: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
+      copy_shared_plan: {
+        Args: { p_token: string };
+        Returns: string;
+      };
+      weak_steps: {
+        Args: { p_days: number };
+        Returns: {
+          step_id: string;
+          plan_id: string;
+          topic: string;
+          level: string;
+          title: string;
+          goal: string;
+          reviews: number;
+          misses: number;
+        }[];
+      };
       save_plan: {
         Args: { p_topic: string; p_level: string; p_context: string | null; p_steps: Json };
         Returns: string;

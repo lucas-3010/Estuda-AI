@@ -7,10 +7,10 @@ import { AiError, aiErrorMessage, type AiErrorCode } from "@/lib/ai/errors";
 import { getAccount, type Account } from "@/lib/data/account";
 import { savePlan } from "@/lib/data/plans";
 import { callGenerate } from "@/lib/generateClient";
-import type { GeneratedPlan, GeneratedStep, Source } from "@/lib/validation/plan";
+import type { GeneratedPlan, GeneratedStep } from "@/lib/validation/plan";
 import { btnPrimary, btnSecondary, muted } from "@/components/ui/styles";
 import { PlanPreview } from "./PlanPreview";
-import { SourceForm } from "./SourceForm";
+import { SourceForm, type Material } from "./SourceForm";
 import { TopicForm, type TopicValues } from "./TopicForm";
 import { toDraftStep, type DraftStep } from "./types";
 
@@ -45,12 +45,16 @@ export function NewTopicFlow() {
     context: values.context.trim() || undefined,
   });
 
-  async function generatePlan(source?: Source) {
+  async function generatePlan(source?: Material) {
     setError(null);
     setBusy(true);
     abort.current = new AbortController();
     try {
-      const body = source ? { mode: "source" as const, ...request(), source } : { mode: "plan" as const, ...request() };
+      const body = !source
+        ? { mode: "plan" as const, ...request() }
+        : source.kind === "link"
+          ? { mode: "link" as const, ...request(), url: source.url }
+          : { mode: "source" as const, ...request(), source };
       const plan = await callGenerate<GeneratedPlan>(body, abort.current.signal);
       setSteps(plan.steps.map(toDraftStep));
     } catch (e) {

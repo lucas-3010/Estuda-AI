@@ -78,7 +78,7 @@ test("gerar plano com IA, salvar e revisar um cartão", async ({ page }) => {
   await page.getByLabel("Sua resposta").fill("Fundamentos: resposta 1");
   await page.getByLabel("Sua resposta").press("Enter");
   await expect(page.getByRole("heading", { name: /você acertou/i })).toBeVisible();
-  await expect(page.getByText("Fundamentos: resposta 1").filter({ visible: true })).toBeVisible();
+  await expect(page.getByText("Fundamentos: resposta 1", { exact: true }).filter({ visible: true })).toBeVisible();
   await page.keyboard.press("4");
   await expect(page.getByText("Fundamentos: pergunta 2?").filter({ visible: true })).toBeVisible();
 
@@ -90,4 +90,45 @@ test("gerar plano com IA, salvar e revisar um cartão", async ({ page }) => {
   await page.getByRole("link", { name: "Estatísticas" }).click();
   await expect(page.getByTestId("total-reviews")).toHaveText("1");
   await expect(page.getByTestId("accuracy")).toHaveText("100%");
+});
+
+test("compartilhar um baralho por link", async ({ page, browser }) => {
+  await page.route("**/api/generate", async (route) => {
+    await route.fulfill({ json: PLAN });
+  });
+
+  await login(page);
+  await page.getByRole("button", { name: "Pular" }).click();
+  await page.getByRole("link", { name: "Novo tema" }).click();
+  await page.getByLabel("Tema").fill("Banco de dados compartilhado");
+  await page.getByRole("button", { name: "Gerar plano" }).click();
+  await page.getByRole("button", { name: "Salvar plano" }).click();
+  await expect(page.getByRole("heading", { name: "Início" })).toBeVisible();
+
+  // Cria o link público do plano
+  await page.getByRole("button", { name: "Compartilhar" }).filter({ visible: true }).click();
+  await page.getByRole("button", { name: "Criar link" }).click();
+  const link = await page.getByLabel("Link do baralho").inputValue();
+  expect(link).toMatch(/\/b\/[A-Za-z0-9_-]{16,64}$/);
+
+  // Um visitante sem conta vê as perguntas, com as respostas escondidas
+  const visitor = await browser.newContext();
+  const guest = await visitor.newPage();
+  await guest.goto(link);
+  await expect(guest.getByRole("heading", { name: "Banco de dados compartilhado" })).toBeVisible();
+  await expect(guest.getByText("Fundamentos: pergunta 1?")).toBeVisible();
+  await expect(guest.getByText("Fundamentos: resposta 1")).toHaveCount(0);
+
+  // Para estudar, precisa entrar
+  await guest.getByRole("button", { name: "Estudar este baralho" }).click();
+  await expect(guest).toHaveURL(/\/login$/);
+  await visitor.close();
+
+  // Desativado, o link para de funcionar
+  await page.getByRole("button", { name: "Desativar link" }).click();
+  const after = await browser.newContext();
+  const gone = await after.newPage();
+  await gone.goto(link);
+  await expect(gone.getByText("Banco de dados compartilhado")).toHaveCount(0);
+  await after.close();
 });

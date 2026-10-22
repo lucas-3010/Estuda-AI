@@ -8,7 +8,8 @@ export type AiErrorCode =
   | "refused"
   | "invalid_output"
   | "network"
-  | "unauthenticated";
+  | "unauthenticated"
+  | "source_unreadable";
 
 const MESSAGES: Record<AiErrorCode, string> = {
   quota_exceeded: "Você usou todas as gerações com IA do seu plano este mês. Troque de plano para gerar mais.",
@@ -19,6 +20,8 @@ const MESSAGES: Record<AiErrorCode, string> = {
   invalid_output: "A IA devolveu uma resposta incompleta. Tente de novo.",
   network: "Não foi possível falar com a IA. Verifique sua conexão e tente de novo.",
   unauthenticated: "Sua sessão expirou. Entre de novo para continuar.",
+  source_unreadable:
+    "Não consegui ler esse link. Confira se a página é pública. Se for vídeo ou página com login, copie o texto ou a transcrição e use \"Colar texto\".",
 };
 
 export class AiError extends Error {

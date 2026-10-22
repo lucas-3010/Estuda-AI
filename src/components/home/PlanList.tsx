@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { PlanWithProgress } from "@/lib/data/plans";
 import { LEVEL_LABELS } from "@/lib/validation/plan";
 import { card, muted } from "@/components/ui/styles";
+import { ExamCountdown } from "./ExamCountdown";
+import { SharePlan } from "./SharePlan";
 
 function ProgressBar({ counts }: { counts: { new: number; learning: number; review: number } }) {
   const total = counts.new + counts.learning + counts.review || 1;
@@ -14,7 +16,15 @@ function ProgressBar({ counts }: { counts: { new: number; learning: number; revi
   );
 }
 
-export function PlanList({ plans }: { plans: PlanWithProgress[] }) {
+export function PlanList({
+  plans,
+  newCardsPerDay,
+  onRaiseNewPerDay,
+}: {
+  plans: PlanWithProgress[];
+  newCardsPerDay: number;
+  onRaiseNewPerDay: (value: number) => Promise<void>;
+}) {
   return (
     <div className="flex flex-col gap-4">
       {plans.map((plan) => (
@@ -24,13 +34,23 @@ export function PlanList({ plans }: { plans: PlanWithProgress[] }) {
               <h3 className="text-lg font-semibold">{plan.topic}</h3>
               <p className={muted}>{LEVEL_LABELS[plan.level]}</p>
             </div>
-            <Link
-              href={`/revisar?plano=${plan.id}`}
-              className="text-sm font-medium text-indigo-700 hover:underline dark:text-indigo-400"
-            >
-              Revisar este plano
-            </Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <SharePlan planId={plan.id} initialToken={plan.shareToken} />
+              <Link
+                href={`/revisar?plano=${plan.id}`}
+                className="text-sm font-medium text-indigo-700 hover:underline dark:text-indigo-400"
+              >
+                Revisar este plano
+              </Link>
+            </div>
           </div>
+          <ExamCountdown
+            planId={plan.id}
+            initialDate={plan.examDate}
+            newCards={plan.steps.reduce((n, s) => n + s.counts.new, 0)}
+            newCardsPerDay={newCardsPerDay}
+            onRaiseNewPerDay={onRaiseNewPerDay}
+          />
           <ol className="mt-4 flex flex-col gap-3">
             {plan.steps.map((step) => (
               <li key={step.id}>

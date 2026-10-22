@@ -8,6 +8,7 @@ import { recordReview } from "@/lib/data/reviews";
 import { previewIntervals, schedule, type Rating } from "@/lib/srs/fsrs";
 import type { CardRow } from "@/lib/supabase/database.types";
 import { Markdown } from "@/components/Markdown";
+import { TutorChat } from "./TutorChat";
 import { btnPrimary, btnSecondary, card, input, label, muted } from "@/components/ui/styles";
 
 const RATINGS: { rating: Rating; label: string; className: string }[] = [
@@ -248,6 +249,8 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
           {checkError}
         </p>
       )}
+
+      {revealed && <TutorChat key={current.id} cardId={current.id} />}
 
       {error && (
         <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-red-800 dark:bg-red-950 dark:text-red-200">

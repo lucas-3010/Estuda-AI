@@ -6,9 +6,18 @@ vi.mock("@/lib/supabase/server", () => ({
   createServerSupabase: async () => ({ auth: { exchangeCodeForSession } }),
 }));
 
+const jar = new Map<string, string>();
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined),
+    delete: (name: string) => jar.delete(name),
+  }),
+}));
+
 import { GET } from "@/app/auth/callback/route";
 
 beforeEach(() => {
+  jar.clear();
   exchangeCodeForSession.mockReset().mockResolvedValue({ error: null });
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -20,6 +29,19 @@ describe("GET /auth/callback", () => {
     const res = await GET(new Request("http://localhost:3000/auth/callback?code=abc"));
     expect(exchangeCodeForSession).toHaveBeenCalledWith("abc");
     expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/");
+  });
+
+  test("volta ao baralho compartilhado aberto antes do login", async () => {
+    jar.set("estuda_depois_login", encodeURIComponent("/b/abcdefghijklmnop1234"));
+    const res = await GET(new Request("http://localhost:3000/auth/callback?code=abc"));
+    expect(res.headers.get("location")).toBe("/b/abcdefghijklmnop1234");
+    expect(jar.has("estuda_depois_login")).toBe(false);
+  });
+
+  test("ignora destinos que não são baralhos compartilhados", async () => {
+    jar.set("estuda_depois_login", encodeURIComponent("https://site-malicioso.com"));
+    const res = await GET(new Request("http://localhost:3000/auth/callback?code=abc"));
     expect(res.headers.get("location")).toBe("/");
   });
 

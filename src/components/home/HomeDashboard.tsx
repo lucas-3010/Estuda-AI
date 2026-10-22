@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { listDueCandidates } from "@/lib/data/cards";
 import { listPlansWithProgress, type PlanWithProgress } from "@/lib/data/plans";
 import { newCardsStudiedToday } from "@/lib/data/reviews";
-import { getSettings, userTimeZone } from "@/lib/data/settings";
+import { getSettings, updateSettings, userTimeZone, type Settings } from "@/lib/data/settings";
 import { buildQueue } from "@/lib/srs/queue";
 import { btnPrimary, card, muted } from "@/components/ui/styles";
 import { PlanList } from "./PlanList";
@@ -13,7 +13,7 @@ import { PlanList } from "./PlanList";
 type State =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "ready"; plans: PlanWithProgress[]; dueToday: number };
+  | { status: "ready"; plans: PlanWithProgress[]; dueToday: number; settings: Settings };
 
 export function HomeDashboard() {
   const [state, setState] = useState<State>({ status: "loading" });
@@ -28,7 +28,7 @@ export function HomeDashboard() {
           newPerDay: settings.newCardsPerDay,
           newStudiedToday: studied,
         });
-        setState({ status: "ready", plans, dueToday: queue.length });
+        setState({ status: "ready", plans, dueToday: queue.length, settings });
       })
       .catch(() => setState({ status: "error" }));
   }, []);
@@ -79,7 +79,15 @@ export function HomeDashboard() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Seus planos</h2>
-        <PlanList plans={state.plans} />
+        <PlanList
+          plans={state.plans}
+          newCardsPerDay={state.settings.newCardsPerDay}
+          onRaiseNewPerDay={async (value) => {
+            const settings = { ...state.settings, newCardsPerDay: value };
+            await updateSettings(settings);
+            setState({ ...state, settings });
+          }}
+        />
       </section>
     </div>
   );

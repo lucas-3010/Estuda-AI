@@ -5,6 +5,7 @@ import { dueForecast, reviewStats, type DayStat, type ForecastDay } from "@/lib/
 import { userTimeZone } from "@/lib/data/settings";
 import { card, muted } from "@/components/ui/styles";
 import { BarChart } from "./BarChart";
+import { WeakSpots } from "./WeakSpots";
 
 function shortDate(day: string) {
   const [, m, d] = day.split("-");
@@ -73,6 +74,8 @@ export function StatsDashboard() {
           }))}
         />
       </section>
+
+      <WeakSpots />
 
       <section className={card}>
         <BarChart
