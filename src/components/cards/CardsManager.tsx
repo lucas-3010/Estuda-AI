@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createCard, deleteCard, listCards, updateCard } from "@/lib/data/cards";
 import { listPlansWithProgress, type PlanWithProgress } from "@/lib/data/plans";
 import type { CardRow } from "@/lib/supabase/database.types";
+import { HiddenAnswer } from "@/components/HiddenAnswer";
 import { Markdown } from "@/components/Markdown";
 import { btnDanger, btnPrimary, btnSecondary, card, input, muted } from "@/components/ui/styles";
 import { CardEditor } from "./CardEditor";
@@ -142,7 +143,9 @@ export function CardsManager() {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Markdown source={c.front} />
-                  <Markdown source={c.back} className="text-zinc-700 dark:text-zinc-300" />
+                  <HiddenAnswer>
+                    <Markdown source={c.back} className="text-zinc-700 dark:text-zinc-300" />
+                  </HiddenAnswer>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {confirming === c.id ? (

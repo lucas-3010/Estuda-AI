@@ -21,16 +21,26 @@ const queue = [
 
 beforeEach(() => {
   recordReview.mockReset().mockResolvedValue(undefined);
-  requestCheck.mockReset();
+  requestCheck.mockReset().mockResolvedValue({ correct: true, feedback: "", howTo: "" });
 });
 
+/** Responde o cartão atual (a correção é simulada como certa) e espera o verso aparecer. */
+async function answer(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText("Sua resposta"), "minha resposta{Enter}");
+  await screen.findByRole("heading", { name: /você acertou/i });
+}
+
 describe("Sessão de revisão", () => {
-  test("espaço revela o verso e mostra os 4 botões com intervalo", async () => {
+  test("o verso só aparece depois de responder", async () => {
     const user = userEvent.setup();
     render(<ReviewSession queue={queue} retention={0.9} />);
     expect(screen.getByText("Pergunta um")).toBeInTheDocument();
-    expect(screen.queryByText("Resposta um")).toBeNull();
+    expect(screen.getByLabelText("Sua resposta")).toHaveFocus();
+    await user.click(document.body);
     await user.keyboard(" ");
+    await user.keyboard("{Enter}");
+    expect(screen.queryByText("Resposta um")).toBeNull();
+    await answer(user);
     expect(screen.getByText("Resposta um")).toBeInTheDocument();
     for (const name of [/errei/i, /difícil/i, /bom/i, /fácil/i]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
@@ -40,15 +50,16 @@ describe("Sessão de revisão", () => {
   test("tecla 3 grava nota Bom e avança para o próximo cartão", async () => {
     const user = userEvent.setup();
     render(<ReviewSession queue={queue} retention={0.9} />);
-    await user.keyboard(" ");
+    await answer(user);
     await user.keyboard("3");
     await screen.findByText("Pergunta dois");
     expect(recordReview).toHaveBeenCalledWith("c1", 3, expect.objectContaining({ reps: 1 }));
   });
 
-  test("teclas de nota antes de virar o cartão são ignoradas", async () => {
+  test("teclas de nota antes de responder são ignoradas", async () => {
     const user = userEvent.setup();
     render(<ReviewSession queue={queue} retention={0.9} />);
+    await user.click(document.body);
     await user.keyboard("3");
     expect(recordReview).not.toHaveBeenCalled();
   });
@@ -58,7 +69,7 @@ describe("Sessão de revisão", () => {
     recordReview.mockReturnValueOnce(new Promise<void>((r) => (resolve = r)));
     const user = userEvent.setup();
     render(<ReviewSession queue={queue} retention={0.9} />);
-    await user.keyboard(" ");
+    await answer(user);
     await user.keyboard("3");
     await user.keyboard("3");
     expect(recordReview).toHaveBeenCalledTimes(1);
@@ -70,7 +81,7 @@ describe("Sessão de revisão", () => {
     recordReview.mockRejectedValueOnce(new Error("rede"));
     const user = userEvent.setup();
     render(<ReviewSession queue={queue} retention={0.9} />);
-    await user.keyboard(" ");
+    await answer(user);
     await user.click(screen.getByRole("button", { name: /bom/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível salvar/i);
     expect(screen.getByText("Pergunta um")).toBeInTheDocument();
@@ -82,10 +93,10 @@ describe("Sessão de revisão", () => {
     // "Fácil" gradua cartões novos direto; "Bom" ainda passa pelos passos de aprendizagem
     const user = userEvent.setup();
     render(<ReviewSession queue={queue} retention={0.9} />);
-    await user.keyboard(" ");
+    await answer(user);
     await user.keyboard("4");
     await screen.findByText("Pergunta dois");
-    await user.keyboard(" ");
+    await answer(user);
     await user.keyboard("4");
     await waitFor(() => expect(screen.getByRole("heading", { name: /sessão concluída/i })).toBeInTheDocument());
     expect(screen.getByText(/2 cartões revisados/i)).toBeInTheDocument();
@@ -94,10 +105,10 @@ describe("Sessão de revisão", () => {
   test("cartão errado volta para o fim da fila da sessão", async () => {
     const user = userEvent.setup();
     render(<ReviewSession queue={queue} retention={0.9} />);
-    await user.keyboard(" ");
+    await answer(user);
     await user.keyboard("1");
     await screen.findByText("Pergunta dois");
-    await user.keyboard(" ");
+    await answer(user);
     await user.keyboard("3");
     await screen.findByText("Pergunta um");
     expect(screen.queryByRole("heading", { name: /sessão concluída/i })).toBeNull();
@@ -143,6 +154,20 @@ describe("Sessão de revisão", () => {
     expect(await screen.findByText(/correções pela IA de hoje/i)).toBeInTheDocument();
     expect(screen.getByText("Resposta um")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /bom/i })).toBeInTheDocument();
+  });
+
+  test("\"Não sei\" mostra o verso e só deixa continuar como erro", async () => {
+    const user = userEvent.setup();
+    render(<ReviewSession queue={queue} retention={0.9} />);
+    await user.click(screen.getByRole("button", { name: /não sei/i }));
+    expect(screen.getByText("Resposta um")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /bom/i })).toBeNull();
+    await user.keyboard("4");
+    expect(recordReview).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByText("Pergunta dois");
+    expect(recordReview).toHaveBeenCalledWith("c1", 1, expect.anything());
+    expect(requestCheck).not.toHaveBeenCalled();
   });
 
   test("fila vazia mostra que não há nada para revisar", () => {

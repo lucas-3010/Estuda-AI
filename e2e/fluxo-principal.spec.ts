@@ -74,7 +74,10 @@ test("gerar plano com IA, salvar e revisar um cartão", async ({ page }) => {
   // Revisa um cartão como Fácil
   await page.getByRole("link", { name: "Revisar agora" }).click();
   await expect(page.getByText("Fundamentos: pergunta 1?").filter({ visible: true })).toBeVisible();
-  await page.keyboard.press("Space");
+  // Resposta idêntica ao verso: corrigida sem chamar a IA
+  await page.getByLabel("Sua resposta").fill("Fundamentos: resposta 1");
+  await page.getByLabel("Sua resposta").press("Enter");
+  await expect(page.getByRole("heading", { name: /você acertou/i })).toBeVisible();
   await expect(page.getByText("Fundamentos: resposta 1").filter({ visible: true })).toBeVisible();
   await page.keyboard.press("4");
   await expect(page.getByText("Fundamentos: pergunta 2?").filter({ visible: true })).toBeVisible();
