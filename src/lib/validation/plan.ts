@@ -160,6 +160,11 @@ export const generateRequestSchema = z.discriminatedUnion("mode", [
     articles: z.string().trim().max(100).optional(),
     banca: z.enum(BANCA_IDS).optional(),
   }),
+  z.object({
+    mode: z.literal("cutoff"),
+    exam: z.string().trim().min(3).max(200),
+    banca: z.string().trim().max(100).optional(),
+  }),
 ]);
 
 export type GenerateRequest = z.infer<typeof generateRequestSchema>;
@@ -260,8 +265,25 @@ export type GeneratedLawPlan = z.infer<typeof lawPlanSchema>;
 export type LawArticleSnapshot = { article: string; text: string };
 export type LawResult = GeneratedLawPlan & { articles: LawArticleSnapshot[]; sourceUrl: string | null };
 
+/** Nota de corte estimada pela IA, em pontos de 100, com a fonte e a explicação. */
+export const cutoffSchema = z.object({
+  cutoff: z.number().min(0).max(100).nullable(),
+  note: z.string().trim().max(500),
+});
+export type CutoffResult = z.infer<typeof cutoffSchema>;
+
+/** Resultado da busca diária do radar de editais. */
+export const radarSchema = z.object({
+  found: z.boolean(),
+  title: z.string().trim().max(300),
+  url: z.string().trim().max(2000),
+  published: z.string().trim().max(10),
+});
+export type RadarResult = z.infer<typeof radarSchema>;
+
 export type GenerateResult =
   | GeneratedPlan
+  | CutoffResult
   | GeneratedStep
   | GeneratedReinforce
   | GeneratedExam
@@ -347,6 +369,28 @@ export const importedExamJsonSchema = {
     },
   },
   required: ["title", "questions"],
+  additionalProperties: false,
+} as const;
+
+export const cutoffJsonSchema = {
+  type: "object",
+  properties: {
+    cutoff: { anyOf: [{ type: "number" }, { type: "null" }] },
+    note: { type: "string" },
+  },
+  required: ["cutoff", "note"],
+  additionalProperties: false,
+} as const;
+
+export const radarJsonSchema = {
+  type: "object",
+  properties: {
+    found: { type: "boolean" },
+    title: { type: "string" },
+    url: { type: "string" },
+    published: { type: "string" },
+  },
+  required: ["found", "title", "url", "published"],
   additionalProperties: false,
 } as const;
 

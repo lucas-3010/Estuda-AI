@@ -49,3 +49,23 @@ export async function getEditalByPlan(planId: string): Promise<Edital | null> {
     generated: data.generated ?? [],
   };
 }
+
+/**
+ * Peso de cada etapa no edital (a etapa N do plano é a disciplina N do edital).
+ * Etapas fora de um edital não aparecem: quem usa trata como peso 1.
+ */
+export async function editalWeights(plans: Array<{ id: string; steps: Array<{ id: string; position: number }> }>): Promise<Map<string, number>> {
+  const { data, error } = await createBrowserSupabase().from("editais").select("plan_id, disciplines").not("plan_id", "is", null);
+  if (error) throw error;
+  const weights = new Map<string, number>();
+  for (const row of data ?? []) {
+    const plan = plans.find((p) => p.id === row.plan_id);
+    if (!plan || !Array.isArray(row.disciplines)) continue;
+    row.disciplines.forEach((d, i) => {
+      const parsed = editalDisciplineSchema.safeParse(d);
+      const step = plan.steps.find((s) => s.position === i);
+      if (parsed.success && step) weights.set(step.id, parsed.data.weight);
+    });
+  }
+  return weights;
+}

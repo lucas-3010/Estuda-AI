@@ -12,6 +12,8 @@ export type StepProgress = {
   title: string;
   goal: string;
   position: number;
+  /** "mistakes" na etapa "Meus erros". */
+  kind: string;
   counts: { new: number; learning: number; review: number };
 };
 
@@ -25,6 +27,9 @@ export type PlanWithProgress = {
   createdAt: string;
   shareToken: string | null;
   examDate: string | null;
+  /** Nota de corte do concurso, em pontos de 100. */
+  cutoff: number | null;
+  cutoffNote: string | null;
   steps: StepProgress[];
 };
 
@@ -53,7 +58,7 @@ export async function savePlan(input: {
 export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {
   const { data, error } = await createBrowserSupabase()
     .from("study_plans")
-    .select("id, topic, level, kind, created_at, share_token, exam_date, plan_steps(id, title, goal, position, cards(state))")
+    .select("id, topic, level, kind, created_at, share_token, exam_date, cutoff, cutoff_note, plan_steps(id, title, goal, position, kind, cards(state))")
     .order("created_at", { ascending: false });
   if (error) throw error;
 
@@ -65,6 +70,8 @@ export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {
     createdAt: plan.created_at,
     shareToken: plan.share_token,
     examDate: plan.exam_date,
+    cutoff: plan.cutoff === null ? null : Number(plan.cutoff),
+    cutoffNote: plan.cutoff_note,
     steps: [...(plan.plan_steps ?? [])]
       .sort((a, b) => a.position - b.position)
       .map((step) => {
@@ -74,6 +81,7 @@ export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {
           title: step.title,
           goal: step.goal,
           position: step.position,
+          kind: step.kind,
           counts: {
             new: states.filter((s) => s === 0).length,
             learning: states.filter((s) => s === 1 || s === 3).length,
@@ -92,6 +100,15 @@ export async function deletePlan(id: string): Promise<void> {
 /** Grava ou apaga (null) a data da prova do plano. */
 export async function setExamDate(id: string, examDate: string | null): Promise<void> {
   const { error } = await createBrowserSupabase().from("study_plans").update({ exam_date: examDate }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Grava ou apaga (null) a nota de corte do plano e de onde ela veio. */
+export async function setCutoff(id: string, cutoff: number | null, note: string | null): Promise<void> {
+  const { error } = await createBrowserSupabase()
+    .from("study_plans")
+    .update({ cutoff, cutoff_note: note })
+    .eq("id", id);
   if (error) throw error;
 }
 

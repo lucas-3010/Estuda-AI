@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { AiError } from "@/lib/ai/errors";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: push, refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push, replace: push, refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const callGenerate = vi.fn();
 vi.mock("@/lib/generateClient", () => ({ callGenerate: (...args: unknown[]) => callGenerate(...args) }));

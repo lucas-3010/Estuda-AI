@@ -58,6 +58,7 @@ describe("recordReview", () => {
       p_card_id: "card-1",
       p_rating: 3,
       p_next: next,
+      p_confident: null,
     });
   });
 

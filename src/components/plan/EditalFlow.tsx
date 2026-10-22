@@ -20,10 +20,19 @@ const UPGRADE_CODES: AiErrorCode[] = ["quota_exceeded", "files_not_allowed"];
  * Edital vira plano: a IA lê o edital, a pessoa confere o edital verticalizado
  * (disciplinas, pesos e tópicos) e o plano é criado com uma etapa por disciplina.
  */
-export function EditalFlow({ filesAllowed, onGenerated }: { filesAllowed: boolean; onGenerated: () => void }) {
+export function EditalFlow({
+  filesAllowed,
+  onGenerated,
+  initialUrl = "",
+}: {
+  filesAllowed: boolean;
+  onGenerated: () => void;
+  /** Link do edital vindo do radar de editais. */
+  initialUrl?: string;
+}) {
   const router = useRouter();
   const [kind, setKind] = useState<Kind>("link");
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(initialUrl);
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [banca, setBanca] = useState("");

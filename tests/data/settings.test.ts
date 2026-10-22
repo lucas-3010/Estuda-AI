@@ -8,7 +8,7 @@ import { updateSettings } from "@/lib/data/settings";
 
 describe("updateSettings", () => {
   test("faz upsert com o id do usuário para funcionar mesmo sem linha existente", async () => {
-    await updateSettings({ newCardsPerDay: 30, desiredRetention: 0.85, dailyGoal: 15, emailReminders: false });
+    await updateSettings({ newCardsPerDay: 30, desiredRetention: 0.85, dailyGoal: 15, emailReminders: false, studyMinutes: null });
     expect(fake.calls).toContainEqual({
       table: "user_settings",
       op: "upsert",
@@ -19,6 +19,7 @@ describe("updateSettings", () => {
           desired_retention: 0.85,
           daily_goal: 15,
           email_reminders: false,
+          study_minutes: null,
           time_zone: expect.any(String),
         },
         { onConflict: "user_id" },
