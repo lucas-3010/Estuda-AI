@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CheckResult } from "@/lib/ai/checkAnswer";
+import { CheckError, formatDuration, requestCheck, suggestedRating } from "@/lib/checkAnswerClient";
 import { recordReview } from "@/lib/data/reviews";
 import { previewIntervals, schedule, type Rating } from "@/lib/srs/fsrs";
 import type { CardRow } from "@/lib/supabase/database.types";
 import { Markdown } from "@/components/Markdown";
-import { btnPrimary, btnSecondary, card, muted } from "@/components/ui/styles";
+import { btnPrimary, btnSecondary, card, input, label, muted } from "@/components/ui/styles";
 
 const RATINGS: { rating: Rating; label: string; className: string }[] = [
   { rating: 1, label: "Errei", className: "border-red-300 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950" },
@@ -19,15 +21,26 @@ const RATINGS: { rating: Rating; label: string; className: string }[] = [
 // revistos ainda nesta sessão.
 const REQUEUE_WINDOW_MS = 20 * 60 * 1000;
 
+type Checked = CheckResult & { ms: number };
+
 export function ReviewSession({ queue: initialQueue, retention }: { queue: CardRow[]; retention: number }) {
   const [queue, setQueue] = useState(initialQueue);
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const [tally, setTally] = useState<Record<Rating, number>>({ 1: 0, 2: 0, 3: 0, 4: 0 });
+  const [answer, setAnswer] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked] = useState<Checked | null>(null);
+  const [checkError, setCheckError] = useState<string | null>(null);
   const pending = useRef(false);
+  // Momento em que o cartão atual apareceu, para medir o tempo da resposta.
+  const shownAt = useRef(0);
 
   const current = queue[0];
+  useEffect(() => {
+    shownAt.current = performance.now();
+  }, []);
   const reviewed = tally[1] + tally[2] + tally[3] + tally[4];
   const intervals = useMemo(
     () => (current && revealed ? previewIntervals(current, new Date(), retention) : null),
@@ -49,6 +62,10 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         setQueue((q) => (again ? [...q.slice(1), updated] : q.slice(1)));
         setTally((t) => ({ ...t, [rating]: t[rating] + 1 }));
         setRevealed(false);
+        setAnswer("");
+        setChecked(null);
+        setCheckError(null);
+        shownAt.current = performance.now();
       } catch {
         setError(true);
       } finally {
@@ -58,6 +75,26 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
     },
     [current, revealed, retention],
   );
+
+  async function submitAnswer(event?: React.FormEvent) {
+    event?.preventDefault();
+    const text = answer.trim();
+    if (!current || revealed || checking || !text) return;
+    const ms = performance.now() - shownAt.current;
+    setChecking(true);
+    setCheckError(null);
+    try {
+      const result = await requestCheck(current.id, text);
+      setChecked({ ...result, ms });
+    } catch (e) {
+      setCheckError(e instanceof CheckError ? e.message : "Não foi possível corrigir agora. Compare sua resposta com o verso e avalie.");
+    } finally {
+      setChecking(false);
+      setRevealed(true);
+    }
+  }
+
+  const suggested = checked ? suggestedRating(checked.correct, checked.ms) : null;
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -118,15 +155,82 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         {queue.length} {queue.length === 1 ? "cartão restante" : "cartões restantes"}
       </p>
 
-      <article className={`${card} min-h-64`}>
+      <article className={`${card} min-h-48`}>
         <Markdown source={current.front} className="text-lg" />
         {revealed && (
           <>
             <hr className="my-5 border-zinc-200 dark:border-zinc-800" />
+            <p className={`mb-1 ${muted}`}>Resposta esperada</p>
             <Markdown source={current.back} />
           </>
         )}
       </article>
+
+      {!revealed && (
+        <form onSubmit={submitAnswer} className="flex flex-col gap-2">
+          <label htmlFor="resposta" className={label}>
+            Sua resposta
+          </label>
+          <textarea
+            id="resposta"
+            rows={3}
+            value={answer}
+            maxLength={2000}
+            disabled={checking}
+            onChange={(e) => setAnswer(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void submitAnswer();
+              }
+            }}
+            placeholder="Escreva com suas palavras e aperte Enter"
+            className={input}
+          />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button type="submit" disabled={checking || !answer.trim()} className={`${btnPrimary} py-3 sm:flex-1`}>
+              {checking ? "Corrigindo…" : "Responder"}
+            </button>
+            <button type="button" disabled={checking} className={`${btnSecondary} py-3`} onClick={() => setRevealed(true)}>
+              Não sei, mostrar resposta <span className="ml-2 text-xs opacity-75">(espaço)</span>
+            </button>
+          </div>
+        </form>
+      )}
+
+      {revealed && checked && (
+        <section
+          aria-live="polite"
+          className={`rounded-xl border p-5 ${
+            checked.correct
+              ? "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40"
+              : "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
+          }`}
+        >
+          <h2 className={`font-sans text-lg font-semibold ${checked.correct ? "text-emerald-800 dark:text-emerald-300" : "text-red-800 dark:text-red-300"}`}>
+            {checked.correct ? `✓ Você acertou em ${formatDuration(checked.ms)}!` : "✗ Resposta incorreta"}
+          </h2>
+          <p className={`mt-1 ${muted}`}>Sua resposta: {answer.trim()}</p>
+          {checked.feedback && (
+            <div className="mt-3">
+              {!checked.correct && <h3 className="text-sm font-semibold">Por que está errada</h3>}
+              <Markdown source={checked.feedback} />
+            </div>
+          )}
+          {checked.howTo && (
+            <div className="mt-3">
+              <h3 className="text-sm font-semibold">Como chegar na resposta certa</h3>
+              <Markdown source={checked.howTo} />
+            </div>
+          )}
+        </section>
+      )}
+
+      {revealed && checkError && (
+        <p role="status" className="rounded-lg bg-amber-50 px-4 py-3 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {checkError}
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-red-800 dark:bg-red-950 dark:text-red-200">
@@ -134,26 +238,29 @@ export function ReviewSession({ queue: initialQueue, retention }: { queue: CardR
         </p>
       )}
 
-      {!revealed ? (
-        <button type="button" className={`${btnPrimary} py-3`} onClick={() => setRevealed(true)}>
-          Mostrar resposta <span className="ml-2 text-xs opacity-75">(espaço)</span>
-        </button>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {RATINGS.map((r) => (
-            <button
-              key={r.rating}
-              type="button"
-              disabled={saving}
-              onClick={() => rate(r.rating)}
-              className={`flex flex-col items-center rounded-lg border px-3 py-2 font-medium disabled:opacity-50 ${r.className}`}
-            >
-              <span>{r.label}</span>
-              <span className="text-xs font-normal opacity-75">
-                {intervals?.[r.rating].label} · {r.rating}
-              </span>
-            </button>
-          ))}
+      {revealed && (
+        <div>
+          <p className={`mb-2 ${muted}`}>
+            {suggested ? "Como foi? A nota sugerida está destacada." : "Como foi? Avalie para agendar a próxima revisão."}
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {RATINGS.map((r) => (
+              <button
+                key={r.rating}
+                type="button"
+                disabled={saving}
+                onClick={() => rate(r.rating)}
+                className={`flex flex-col items-center rounded-lg border px-3 py-2 font-medium disabled:opacity-50 ${r.className} ${
+                  suggested === r.rating ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-[var(--background)]" : ""
+                }`}
+              >
+                <span>{r.label}</span>
+                <span className="text-xs font-normal opacity-75">
+                  {intervals?.[r.rating].label} · {r.rating}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

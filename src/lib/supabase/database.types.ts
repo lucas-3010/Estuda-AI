@@ -258,6 +258,12 @@ export type Database = {
         Update: { id?: never; user_id?: string; kind?: string; created_at?: string };
         Relationships: [];
       };
+      answer_checks: {
+        Row: { id: number; user_id: string; created_at: string };
+        Insert: { id?: never; user_id: string; created_at?: string };
+        Update: { id?: never; user_id?: string; created_at?: string };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -287,6 +293,14 @@ export type Database = {
       };
       refund_generation: {
         Args: { p_usage_id: number };
+        Returns: undefined;
+      };
+      claim_answer_check: {
+        Args: { p_user: string; p_limit: number };
+        Returns: { check_id: number; used: number }[];
+      };
+      refund_answer_check: {
+        Args: { p_check_id: number };
         Returns: undefined;
       };
       study_streak: {

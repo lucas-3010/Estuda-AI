@@ -6,6 +6,12 @@ import { makeCardRow } from "../srs/helpers";
 const recordReview = vi.fn();
 vi.mock("@/lib/data/reviews", () => ({ recordReview: (...args: unknown[]) => recordReview(...args) }));
 
+const requestCheck = vi.fn();
+vi.mock("@/lib/checkAnswerClient", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/checkAnswerClient")>()),
+  requestCheck: (...args: unknown[]) => requestCheck(...args),
+}));
+
 import { ReviewSession } from "@/components/review/ReviewSession";
 
 const queue = [
@@ -15,6 +21,7 @@ const queue = [
 
 beforeEach(() => {
   recordReview.mockReset().mockResolvedValue(undefined);
+  requestCheck.mockReset();
 });
 
 describe("Sessão de revisão", () => {
@@ -94,6 +101,48 @@ describe("Sessão de revisão", () => {
     await user.keyboard("3");
     await screen.findByText("Pergunta um");
     expect(screen.queryByRole("heading", { name: /sessão concluída/i })).toBeNull();
+  });
+
+  test("resposta certa mostra que acertou, o tempo e sugere a nota", async () => {
+    requestCheck.mockResolvedValue({ correct: true, feedback: "Isso mesmo.", howTo: "" });
+    const user = userEvent.setup();
+    render(<ReviewSession queue={queue} retention={0.9} />);
+    await user.type(screen.getByLabelText("Sua resposta"), "resposta um{Enter}");
+    expect(requestCheck).toHaveBeenCalledWith("c1", "resposta um");
+    expect(await screen.findByRole("heading", { name: /você acertou em \d+ segundo/i })).toBeInTheDocument();
+    expect(screen.getByText("Resposta um")).toBeInTheDocument();
+    expect(screen.getByText(/nota sugerida/i)).toBeInTheDocument();
+  });
+
+  test("resposta errada explica o erro e o caminho até a resposta", async () => {
+    requestCheck.mockResolvedValue({
+      correct: false,
+      feedback: "Você confundiu os conceitos.",
+      howTo: "Pense primeiro na definição.",
+    });
+    const user = userEvent.setup();
+    render(<ReviewSession queue={queue} retention={0.9} />);
+    await user.type(screen.getByLabelText("Sua resposta"), "outra coisa");
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    expect(await screen.findByRole("heading", { name: /resposta incorreta/i })).toBeInTheDocument();
+    expect(screen.getByText("Por que está errada")).toBeInTheDocument();
+    expect(screen.getByText("Você confundiu os conceitos.")).toBeInTheDocument();
+    expect(screen.getByText("Como chegar na resposta certa")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /errei/i }));
+    await screen.findByText("Pergunta dois");
+    expect(recordReview).toHaveBeenCalledWith("c1", 1, expect.anything());
+    expect(screen.getByLabelText("Sua resposta")).toHaveValue("");
+  });
+
+  test("se a correção falhar, mostra o verso para a pessoa se avaliar", async () => {
+    const { CheckError } = await import("@/lib/checkAnswerClient");
+    requestCheck.mockRejectedValue(new CheckError("quota_exceeded"));
+    const user = userEvent.setup();
+    render(<ReviewSession queue={queue} retention={0.9} />);
+    await user.type(screen.getByLabelText("Sua resposta"), "resposta{Enter}");
+    expect(await screen.findByText(/correções pela IA de hoje/i)).toBeInTheDocument();
+    expect(screen.getByText("Resposta um")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /bom/i })).toBeInTheDocument();
   });
 
   test("fila vazia mostra que não há nada para revisar", () => {
