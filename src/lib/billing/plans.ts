@@ -20,7 +20,7 @@ export type Plan = {
   files: boolean;
   /** Recebe o lembrete diário por e-mail. */
   reminders: boolean;
-  /** Respostas digitadas na revisão que a IA corrige por dia. Respostas idênticas ao verso não contam. */
+  /** Correções de respostas e mensagens do tutor por dia. Respostas idênticas ao verso não contam. */
   answerChecks: number;
   highlights: string[];
 };
@@ -34,7 +34,7 @@ export const PLANS: Record<PlanId, Plan> = {
     files: false,
     reminders: false,
     answerChecks: 10,
-    highlights: ["3 gerações com IA por mês", "10 respostas corrigidas pela IA por dia", "Revisões ilimitadas", "Modo quiz e Anki"],
+    highlights: ["3 gerações com IA por mês", "10 correções ou explicações da IA por dia", "Revisões ilimitadas", "Modo quiz e Anki"],
   },
   basico: {
     id: "basico",
@@ -44,7 +44,7 @@ export const PLANS: Record<PlanId, Plan> = {
     files: false,
     reminders: true,
     answerChecks: 25,
-    highlights: ["20 gerações com IA por mês", "25 respostas corrigidas pela IA por dia", "Revisões ilimitadas", "Lembrete diário por e-mail"],
+    highlights: ["20 gerações com IA por mês", "25 correções ou explicações da IA por dia", "Revisões ilimitadas", "Lembrete diário por e-mail"],
   },
   pro: {
     id: "pro",
@@ -56,7 +56,7 @@ export const PLANS: Record<PlanId, Plan> = {
     answerChecks: 40,
     highlights: [
       "60 gerações com IA por mês",
-      "40 respostas corrigidas pela IA por dia",
+      "40 correções ou explicações da IA por dia",
       "Cartões a partir de PDF e foto",
       "Lembrete diário por e-mail",
       "Tudo do Básico",
@@ -70,7 +70,7 @@ export const PLANS: Record<PlanId, Plan> = {
     files: true,
     reminders: true,
     answerChecks: 50,
-    highlights: ["150 gerações com IA por mês", "50 respostas corrigidas pela IA por dia", "Cartões a partir de PDF e foto", "Tudo do Pro"],
+    highlights: ["150 gerações com IA por mês", "50 correções ou explicações da IA por dia", "Cartões a partir de PDF e foto", "Tudo do Pro"],
   },
 };
 
@@ -90,7 +90,10 @@ export const COSTS = {
   usdBrl: 5.5,
   /** Pior caso por geração com Haiku 5.5: ~60 mil tokens de entrada (PDF) + 12 mil de saída ≈ US$ 0,012. */
   perGeneration: 0.1,
-  /** Correção de uma resposta com Haiku 5.5: ~1,5 mil tokens de entrada + 400 de saída ≈ US$ 0,00035. */
+  /**
+   * Correção de uma resposta ou mensagem do tutor com Haiku 5.5: em média ~1,5 mil tokens de entrada
+   * + 400 de saída ≈ US$ 0,00035. A última mensagem de uma conversa longa com o tutor chega a ~US$ 0,0005.
+   */
   perAnswerCheck: 0.002,
   /** Stripe no Brasil (cartão nacional): 3,99% + R$ 0,39 por cobrança. */
   stripePercent: 0.0399,

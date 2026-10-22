@@ -4,12 +4,19 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { listCards } from "@/lib/data/cards";
 import { listPlansWithProgress, type PlanWithProgress } from "@/lib/data/plans";
-import { MIN_QUIZ_CARDS, buildQuiz, type QuizQuestion } from "@/lib/quiz";
+import { AiError } from "@/lib/ai/errors";
+import { callGenerate } from "@/lib/generateClient";
+import { MIN_QUIZ_CARDS, buildQuiz, sampleCards, type QuizQuestion } from "@/lib/quiz";
+import { BANCAS, BANCA_IDS, EXAM_SIZES, type Banca, type GeneratedExam } from "@/lib/validation/plan";
 import { Markdown } from "@/components/Markdown";
 import { btnPrimary, btnSecondary, card, input, label, muted } from "@/components/ui/styles";
 
 const SIZES = [5, 10, 20];
-const LETTERS = ["A", "B", "C", "D"];
+const LETTERS = ["A", "B", "C", "D", "E"];
+/** Cartões enviados à IA como base do simulado. */
+const EXAM_BASE_CARDS = 40;
+
+type Source = "cards" | "ai";
 
 type Phase =
   | { kind: "setup" }
@@ -21,6 +28,8 @@ export function QuizSession() {
   const [plans, setPlans] = useState<PlanWithProgress[] | null>(null);
   const [planId, setPlanId] = useState("");
   const [size, setSize] = useState(10);
+  const [source, setSource] = useState<Source>("cards");
+  const [banca, setBanca] = useState<Banca>("enem");
   const [phase, setPhase] = useState<Phase>({ kind: "setup" });
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +39,46 @@ export function QuizSession() {
       .catch(() => setError("Não foi possível carregar seus planos."));
   }, []);
 
+  async function startExam() {
+    const plan = plans?.find((p) => p.id === planId);
+    if (!plan) {
+      setError("Escolha um plano para o simulado.");
+      return;
+    }
+    setError(null);
+    setPhase({ kind: "loading" });
+    try {
+      const cards = await listCards({ planId });
+      if (cards.length < MIN_QUIZ_CARDS) {
+        setError(`O simulado precisa de pelo menos ${MIN_QUIZ_CARDS} cartões no plano.`);
+        setPhase({ kind: "setup" });
+        return;
+      }
+      const count = (EXAM_SIZES as readonly number[]).includes(size) ? size : 10;
+      const exam = await callGenerate<GeneratedExam>({
+        mode: "exam",
+        topic: plan.topic,
+        level: plan.level,
+        banca,
+        count: count as 5 | 10,
+        cards: sampleCards(cards, EXAM_BASE_CARDS).map((c) => ({ front: c.front.slice(0, 1000), back: c.back.slice(0, 2000) })),
+      });
+      const questions: QuizQuestion[] = exam.questions.map((q, i) => ({
+        cardId: `simulado-${i}`,
+        prompt: q.statement,
+        options: q.options,
+        answer: q.answer,
+        explanation: q.explanation,
+      }));
+      setPhase({ kind: "playing", questions, index: 0, picked: null, correct: 0 });
+    } catch (e) {
+      setError(e instanceof AiError ? e.message : "Não foi possível montar o simulado. Tente de novo.");
+      setPhase({ kind: "setup" });
+    }
+  }
+
   async function start() {
+    if (source === "ai") return startExam();
     setError(null);
     setPhase({ kind: "loading" });
     try {
@@ -101,6 +149,12 @@ export function QuizSession() {
             );
           })}
         </ul>
+        {phase.picked !== null && q.explanation && (
+          <div className={card}>
+            <h3 className="text-sm font-semibold">Explicação</h3>
+            <Markdown source={q.explanation} />
+          </div>
+        )}
         {phase.picked !== null && (
           <div className="flex items-center justify-between gap-3">
             <p role="status" className="font-medium">
@@ -125,8 +179,8 @@ export function QuizSession() {
           {phase.correct} de {phase.total} acertos
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <button type="button" className={btnPrimary} onClick={start}>
-            Jogar de novo
+          <button type="button" className={btnPrimary} onClick={() => (source === "ai" ? setPhase({ kind: "setup" }) : start())}>
+            {source === "ai" ? "Novo simulado" : "Jogar de novo"}
           </button>
           <Link href="/revisar" className={btnSecondary}>
             Ir para a revisão
@@ -138,16 +192,44 @@ export function QuizSession() {
 
   return (
     <div className={`${card} flex flex-col gap-4`}>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de quiz">
+        {(
+          [
+            ["cards", "Com meus cartões"],
+            ["ai", "Simulado com IA"],
+          ] as const
+        ).map(([value, text]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={source === value}
+            onClick={() => {
+              setSource(value);
+              setError(null);
+              if (value === "ai" && size > 10) setSize(10);
+            }}
+            className={`rounded-lg border px-3 py-1.5 text-sm ${
+              source === value
+                ? "border-indigo-600 bg-indigo-50 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200"
+                : "border-zinc-300 dark:border-zinc-700"
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
       <p className={muted}>
-        Responda em múltipla escolha, como na prova. As alternativas vêm das respostas dos seus próprios cartões. O quiz
-        não muda o agendamento das revisões.
+        {source === "cards"
+          ? "Responda em múltipla escolha, como na prova. As alternativas vêm das respostas dos seus próprios cartões."
+          : "A IA escreve questões novas no estilo da banca, a partir dos cartões do plano, e explica cada alternativa. Conta como uma geração com IA."}{" "}
+        O quiz não muda o agendamento das revisões.
       </p>
       <div>
         <label htmlFor="quiz-plano" className={label}>
           Plano
         </label>
         <select id="quiz-plano" value={planId} onChange={(e) => setPlanId(e.target.value)} className={`mt-1 ${input}`}>
-          <option value="">Todos os planos</option>
+          {source === "cards" ? <option value="">Todos os planos</option> : <option value="">Escolha um plano</option>}
           {plans?.map((p) => (
             <option key={p.id} value={p.id}>
               {p.topic}
@@ -155,10 +237,29 @@ export function QuizSession() {
           ))}
         </select>
       </div>
+      {source === "ai" && (
+        <div>
+          <label htmlFor="quiz-banca" className={label}>
+            Banca ou tipo de prova
+          </label>
+          <select
+            id="quiz-banca"
+            value={banca}
+            onChange={(e) => setBanca(e.target.value as Banca)}
+            className={`mt-1 ${input}`}
+          >
+            {BANCA_IDS.map((id) => (
+              <option key={id} value={id}>
+                {BANCAS[id]}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <fieldset>
         <legend className={label}>Perguntas</legend>
         <div className="mt-2 flex gap-2">
-          {SIZES.map((n) => (
+          {(source === "ai" ? EXAM_SIZES : SIZES).map((n) => (
             <button
               key={n}
               type="button"
@@ -182,7 +283,13 @@ export function QuizSession() {
       )}
       <div>
         <button type="button" className={btnPrimary} onClick={start} disabled={phase.kind === "loading"}>
-          {phase.kind === "loading" ? "Preparando…" : "Começar quiz"}
+          {phase.kind === "loading"
+            ? source === "ai"
+              ? "A IA está escrevendo o simulado…"
+              : "Preparando…"
+            : source === "ai"
+              ? "Gerar simulado"
+              : "Começar quiz"}
         </button>
       </div>
     </div>

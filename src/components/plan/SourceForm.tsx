@@ -7,9 +7,42 @@ import { LIMITS, type Source } from "@/lib/validation/plan";
 import { btnPrimary, btnSecondary, input, label, muted } from "@/components/ui/styles";
 import { LevelPicker, type TopicValues } from "./TopicForm";
 
-type Kind = "text" | "file";
+type Kind = "text" | "file" | "link";
 
-/** Gera o plano a partir de texto colado, PDF ou foto. */
+/** Material para a IA: texto, arquivo ou um link que a IA lê. */
+export type Material = Source | { kind: "link"; url: string };
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+/** Vídeos não têm texto que a IA consiga ler pelo link. */
+export function isVideoUrl(value: string): boolean {
+  try {
+    return /(^|\.)(youtube\.com|youtu\.be|vimeo\.com|tiktok\.com)$/i.test(new URL(value.trim()).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Nome sugerido a partir do link: o título do caminho ou o domínio. */
+function topicFromUrl(value: string): string {
+  try {
+    const url = new URL(value.trim());
+    const last = decodeURIComponent(url.pathname.split("/").filter(Boolean).at(-1) ?? "");
+    const name = last.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim();
+    return (name.length >= LIMITS.topicMin ? name : url.hostname.replace(/^www\./, "")).slice(0, LIMITS.topicMax);
+  } catch {
+    return "";
+  }
+}
+
+/** Gera o plano a partir de texto colado, PDF, foto ou link. */
 export function SourceForm({
   values,
   onChange,
@@ -20,7 +53,7 @@ export function SourceForm({
 }: {
   values: TopicValues;
   onChange: (values: TopicValues) => void;
-  onSubmit: (source: Source) => void;
+  onSubmit: (source: Material) => void;
   onCancel: () => void;
   busy: boolean;
   filesAllowed: boolean;
@@ -28,11 +61,12 @@ export function SourceForm({
   const [kind, setKind] = useState<Kind>("text");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
 
   const topicOk = values.topic.trim().length >= LIMITS.topicMin;
-  const materialOk = kind === "text" ? text.trim().length >= 50 : Boolean(file);
+  const materialOk = kind === "text" ? text.trim().length >= 50 : kind === "link" ? isHttpUrl(url) && !isVideoUrl(url) : Boolean(file);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -40,6 +74,10 @@ export function SourceForm({
     setError(null);
     if (kind === "text") {
       onSubmit({ kind: "text", text: text.trim() });
+      return;
+    }
+    if (kind === "link") {
+      onSubmit({ kind: "link", url: url.trim() });
       return;
     }
     setReading(true);
@@ -74,9 +112,40 @@ export function SourceForm({
         <button type="button" className={kindClass(kind === "file")} aria-pressed={kind === "file"} onClick={() => setKind("file")}>
           PDF ou foto
         </button>
+        <button type="button" className={kindClass(kind === "link")} aria-pressed={kind === "link"} onClick={() => setKind("link")}>
+          Link
+        </button>
       </div>
 
-      {kind === "text" ? (
+      {kind === "link" ? (
+        <div>
+          <label htmlFor="link" className={label}>
+            Link da página
+          </label>
+          <input
+            id="link"
+            type="url"
+            inputMode="url"
+            value={url}
+            maxLength={2000}
+            onChange={(e) => setUrl(e.target.value)}
+            onBlur={() => {
+              if (isHttpUrl(url) && !values.topic.trim()) onChange({ ...values, topic: topicFromUrl(url) });
+            }}
+            placeholder="https://pt.wikipedia.org/wiki/Fotossíntese"
+            className={`mt-1 ${input}`}
+          />
+          <p className={`mt-1 ${muted}`}>
+            Artigo, apostila on-line, lei no Planalto ou página da Wikipédia. A página precisa ser pública.
+          </p>
+          {isVideoUrl(url) && (
+            <p role="alert" className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              A IA não assiste vídeos pelo link. No YouTube, abra a descrição do vídeo, clique em &quot;Mostrar
+              transcrição&quot;, copie o texto e use &quot;Colar texto&quot;.
+            </p>
+          )}
+        </div>
+      ) : kind === "text" ? (
         <div>
           <label htmlFor="material" className={label}>
             Texto para estudar
@@ -149,7 +218,7 @@ export function SourceForm({
               Cancelar
             </button>
             <span className={muted} role="status">
-              A IA está lendo o material. Isso pode levar até 2 minutos.
+              {kind === "link" ? "A IA está lendo a página." : "A IA está lendo o material."} Isso pode levar até 2 minutos.
             </span>
           </>
         )}

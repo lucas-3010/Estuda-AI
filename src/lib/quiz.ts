@@ -5,6 +5,8 @@ export type QuizQuestion = {
   prompt: string;
   options: string[];
   answer: number;
+  /** Só no simulado com IA: por que a certa está certa e as outras erradas. */
+  explanation?: string;
 };
 
 export const MIN_QUIZ_CARDS = 4;
@@ -41,4 +43,9 @@ export function buildQuiz(cards: QuizCard[], count: number, random: () => number
       return { cardId: card.id, prompt: card.front, options, answer: options.indexOf(card.back) };
     })
     .filter((q) => q.options.length === MIN_QUIZ_CARDS);
+}
+
+/** Escolhe até `max` cartões ao acaso para servir de base ao simulado com IA. */
+export function sampleCards<T>(cards: T[], max: number, random: () => number = Math.random): T[] {
+  return shuffle(cards, random).slice(0, max);
 }

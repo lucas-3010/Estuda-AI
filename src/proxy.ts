@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/privacidade",
   "/sobre",
   "/contato",
+  "/b",
   "/opengraph-image",
   "/apple-icon",
 ];

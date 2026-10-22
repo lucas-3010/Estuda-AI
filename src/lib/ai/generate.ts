@@ -1,11 +1,23 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { ZodType } from "zod";
 import { AiError } from "@/lib/ai/errors";
-import { SYSTEM_PROMPT, planPrompt, sourcePrompt, stepPrompt } from "@/lib/ai/prompt";
+import {
+  SYSTEM_PROMPT,
+  examPrompt,
+  linkPrompt,
+  planPrompt,
+  reinforcePrompt,
+  sourcePrompt,
+  stepPrompt,
+} from "@/lib/ai/prompt";
 import { AI_MODEL } from "@/lib/billing/plans";
 import {
+  examJsonSchema,
+  examSchema,
   planJsonSchema,
   planSchema,
+  reinforceJsonSchema,
+  reinforceSchema,
   stepJsonSchema,
   stepSchema,
   type GenerateRequest,
@@ -16,13 +28,26 @@ import {
 export const MODEL = AI_MODEL;
 const MAX_TOKENS = 32000;
 const ATTEMPTS = 2;
+/** Continuações quando a API pausa um turno longo de ferramenta de servidor. */
+const MAX_CONTINUATIONS = 3;
+
+/** Leitura de páginas feita pelos servidores da Anthropic: nosso servidor nunca acessa o link. */
+export const WEB_FETCH_TOOL = {
+  type: "web_fetch_20250910",
+  name: "web_fetch",
+  max_uses: 2,
+  max_content_tokens: 50_000,
+} as const satisfies Anthropic.WebFetchTool20250910;
 
 export type AiClient = Pick<Anthropic, "messages">;
 
 type UserContent = Anthropic.MessageParam["content"];
 
 function textOf(message: { content: Array<{ type: string; text?: string }> }): string {
+  // Com ferramentas, a IA pode escrever antes de usá-las: o JSON vem depois do último resultado.
+  const lastTool = message.content.findLastIndex((block) => block.type.endsWith("_tool_result"));
   return message.content
+    .slice(lastTool + 1)
     .filter((block) => block.type === "text")
     .map((block) => block.text ?? "")
     .join("");
@@ -40,24 +65,41 @@ function sourceBlock(source: Source): Anthropic.ContentBlockParam {
   }
 }
 
+/** A página do link foi lida com sucesso pelo menos uma vez. */
+function fetchedPage(blocks: Anthropic.ContentBlock[]): boolean {
+  return blocks.some((block) => block.type === "web_fetch_tool_result" && block.content.type === "web_fetch_result");
+}
+
 async function generateStructured<T>(
   client: AiClient,
   content: UserContent,
   jsonSchema: Record<string, unknown>,
   schema: ZodType<T>,
+  options: { webFetch?: boolean } = {},
 ): Promise<T> {
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    const message = await client.messages
-      .stream({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: SYSTEM_PROMPT,
-        output_config: { effort: "medium", format: { type: "json_schema", schema: jsonSchema } },
-        messages: [{ role: "user", content }],
-      })
-      .finalMessage();
+    const messages: Anthropic.MessageParam[] = [{ role: "user", content }];
+    const seen: Anthropic.ContentBlock[] = [];
+    let message: Anthropic.Message;
+    for (let turn = 0; ; turn++) {
+      message = await client.messages
+        .stream({
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          system: SYSTEM_PROMPT,
+          output_config: { effort: "medium", format: { type: "json_schema", schema: jsonSchema } },
+          ...(options.webFetch ? { tools: [WEB_FETCH_TOOL] } : {}),
+          messages,
+        })
+        .finalMessage();
+      seen.push(...message.content);
+      if (message.stop_reason !== "pause_turn" || turn >= MAX_CONTINUATIONS) break;
+      messages.push({ role: "assistant", content: message.content });
+    }
 
     if (message.stop_reason === "refusal") throw new AiError("refused");
+    // Sem a página lida, a IA inventaria o conteúdo a partir do tema.
+    if (options.webFetch && !fetchedPage(seen)) throw new AiError("source_unreadable");
 
     try {
       const parsed = schema.safeParse(JSON.parse(textOf(message)));
@@ -86,6 +128,28 @@ export async function generate(client: AiClient, req: GenerateRequest): Promise<
         [sourceBlock(req.source), { type: "text", text: sourcePrompt(req.topic, req.level, req.context) }],
         planJsonSchema,
         planSchema,
+      );
+    case "link":
+      return generateStructured(
+        client,
+        linkPrompt(req.url, req.topic, req.level, req.context),
+        planJsonSchema,
+        planSchema,
+        { webFetch: true },
+      );
+    case "reinforce":
+      return generateStructured(
+        client,
+        reinforcePrompt(req.topic, req.level, req.step, req.missed, req.context),
+        reinforceJsonSchema,
+        reinforceSchema,
+      );
+    case "exam":
+      return generateStructured(
+        client,
+        examPrompt(req.topic, req.level, req.banca, req.count, req.cards),
+        examJsonSchema,
+        examSchema,
       );
   }
 }

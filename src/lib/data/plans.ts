@@ -16,6 +16,8 @@ export type PlanWithProgress = {
   topic: string;
   level: Level;
   createdAt: string;
+  shareToken: string | null;
+  examDate: string | null;
   steps: StepProgress[];
 };
 
@@ -44,7 +46,7 @@ export async function savePlan(input: {
 export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {
   const { data, error } = await createBrowserSupabase()
     .from("study_plans")
-    .select("id, topic, level, created_at, plan_steps(id, title, goal, position, cards(state))")
+    .select("id, topic, level, created_at, share_token, exam_date, plan_steps(id, title, goal, position, cards(state))")
     .order("created_at", { ascending: false });
   if (error) throw error;
 
@@ -53,6 +55,8 @@ export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {
     topic: plan.topic,
     level: plan.level as Level,
     createdAt: plan.created_at,
+    shareToken: plan.share_token,
+    examDate: plan.exam_date,
     steps: [...(plan.plan_steps ?? [])]
       .sort((a, b) => a.position - b.position)
       .map((step) => {
@@ -74,5 +78,11 @@ export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {
 
 export async function deletePlan(id: string): Promise<void> {
   const { error } = await createBrowserSupabase().from("study_plans").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** Grava ou apaga (null) a data da prova do plano. */
+export async function setExamDate(id: string, examDate: string | null): Promise<void> {
+  const { error } = await createBrowserSupabase().from("study_plans").update({ exam_date: examDate }).eq("id", id);
   if (error) throw error;
 }

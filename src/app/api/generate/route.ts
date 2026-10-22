@@ -19,6 +19,7 @@ const STATUS: Record<AiErrorCode, number> = {
   invalid_output: 502,
   network: 502,
   unauthenticated: 401,
+  source_unreadable: 422,
 };
 
 function fail(code: AiErrorCode) {
