@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { generate, type AiClient } from "@/lib/ai/generate";
-import { examSchema, generateRequestSchema } from "@/lib/validation/plan";
+import { examSchema, generateRequestSchema, importedExamSchema } from "@/lib/validation/plan";
 
 const card = { front: "O que é fotossíntese?", back: "Produção de glicose a partir de luz, água e CO2." };
 const step = { title: "Etapa", goal: "Objetivo", cards: Array(5).fill(card) };
@@ -106,5 +106,47 @@ describe("modo simulado", () => {
   test("pede pelo menos 4 cartões de base", () => {
     const req = { mode: "exam", topic: "Tema", level: "iniciante", banca: "enem", count: 10, cards: [card] };
     expect(generateRequestSchema.safeParse(req).success).toBe(false);
+  });
+});
+
+describe("modo importar prova", () => {
+  const question = { number: 1, statement: "Quanto é 2 + 2?", options: ["3", "4", "5", "6", "7"], answer: 1, fromKey: true };
+  const pasted = { kind: "text" as const, text: "1. Quanto é 2 + 2? (A) 3 (B) 4 (C) 5 (D) 6 (E) 7. ".repeat(2) };
+
+  test("manda a prova e o gabarito digitado e devolve as questões", async () => {
+    const exam = { title: "Prova teste 2024", questions: [question] };
+    const { client, stream } = fakeClient({ stop_reason: "end_turn", content: [text(exam)] });
+    const result = await generate(client, { mode: "import", source: pasted, answerKey: "1-B" });
+    expect(result).toEqual(exam);
+    const content = stream.mock.calls[0][0].messages[0].content;
+    expect(content[0].text).toContain("<material>");
+    expect(content[1].text).toContain("<gabarito>\n1-B\n</gabarito>");
+    expect(stream.mock.calls[0][0].tools).toBeUndefined();
+  });
+
+  test("descarta questões mal lidas e mantém as boas", async () => {
+    const broken = { ...question, number: 2, answer: 9 };
+    const { client } = fakeClient({
+      stop_reason: "end_turn",
+      content: [text({ title: "Prova", questions: [question, broken, { number: 3 }] })],
+    });
+    const result = await generate(client, { mode: "import", source: pasted });
+    expect(result).toEqual({ title: "Prova", questions: [question] });
+  });
+
+  test("material sem questões vira no_questions", async () => {
+    const { client } = fakeClient({ stop_reason: "end_turn", content: [text({ title: "Nada", questions: [] })] });
+    await expect(generate(client, { mode: "import", source: pasted })).rejects.toMatchObject({ code: "no_questions" });
+  });
+
+  test("lê no máximo 40 questões", () => {
+    const many = Array.from({ length: 45 }, (_, i) => ({ ...question, number: i + 1 }));
+    const parsed = importedExamSchema.parse({ title: "Grande", questions: many });
+    expect(parsed.questions).toHaveLength(40);
+  });
+
+  test("gabarito digitado tem limite de tamanho", () => {
+    const body = { mode: "import", source: pasted, answerKey: "x".repeat(3001) };
+    expect(generateRequestSchema.safeParse(body).success).toBe(false);
   });
 });

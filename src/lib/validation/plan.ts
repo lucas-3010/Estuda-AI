@@ -20,6 +20,10 @@ export const LIMITS = {
   sourceTextMax: 60_000,
   /** Tamanho máximo do arquivo em base64 (~3 MB de arquivo). A Vercel aceita até 4,5 MB por requisição. */
   sourceFileMax: 4_000_000,
+  /** Gabarito digitado pela pessoa ao importar uma prova. */
+  answerKeyMax: 3000,
+  /** Questões lidas por importação: mantém a saída da IA e o custo dentro de uma geração. */
+  importQuestionsMax: 40,
 } as const;
 
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
@@ -113,6 +117,11 @@ export const generateRequestSchema = z.discriminatedUnion("mode", [
     count: z.union([z.literal(5), z.literal(10)]),
     cards: z.array(cardInput).min(4).max(40),
   }),
+  z.object({
+    mode: z.literal("import"),
+    source: sourceSchema,
+    answerKey: z.string().trim().max(LIMITS.answerKeyMax).optional(),
+  }),
 ]);
 
 export type GenerateRequest = z.infer<typeof generateRequestSchema>;
@@ -138,7 +147,36 @@ export const examSchema = z.object({
 export type GeneratedExam = z.infer<typeof examSchema>;
 export type ExamQuestion = z.infer<typeof examQuestionSchema>;
 
-export type GenerateResult = GeneratedPlan | GeneratedStep | GeneratedReinforce | GeneratedExam;
+/** Questões reais lidas de uma prova enviada pela pessoa. */
+export const importedQuestionSchema = z
+  .object({
+    number: z.number().int().min(0),
+    statement: z.string().trim().min(1),
+    options: z.array(z.string().trim().min(1)).min(2).max(5),
+    answer: z.number().int().min(0),
+    /** A resposta veio do gabarito (da prova ou digitado), e não da IA. */
+    fromKey: z.boolean(),
+  })
+  .refine((q) => q.answer < q.options.length, "Resposta fora das alternativas");
+
+// Uma questão mal lida (por exemplo, sem alternativas) não derruba a prova inteira: fica de fora.
+export const importedExamSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  questions: z
+    .array(z.unknown())
+    .transform((items) =>
+      items
+        .flatMap((item) => {
+          const parsed = importedQuestionSchema.safeParse(item);
+          return parsed.success ? [parsed.data] : [];
+        })
+        .slice(0, LIMITS.importQuestionsMax),
+    ),
+});
+export type ImportedExam = z.infer<typeof importedExamSchema>;
+export type ImportedQuestion = z.infer<typeof importedQuestionSchema>;
+
+export type GenerateResult = GeneratedPlan | GeneratedStep | GeneratedReinforce | GeneratedExam | ImportedExam;
 
 // JSON Schema enviado à API. Os limites de quantidade ficam de fora porque a saída
 // estruturada não aceita todos eles; a validação completa é feita com zod depois.
@@ -193,5 +231,29 @@ export const examJsonSchema = {
     },
   },
   required: ["questions"],
+  additionalProperties: false,
+} as const;
+
+export const importedExamJsonSchema = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          number: { type: "integer" },
+          statement: { type: "string" },
+          options: { type: "array", items: { type: "string" } },
+          answer: { type: "integer" },
+          fromKey: { type: "boolean" },
+        },
+        required: ["number", "statement", "options", "answer", "fromKey"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["title", "questions"],
   additionalProperties: false,
 } as const;

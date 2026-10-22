@@ -87,6 +87,12 @@ h2 {
 .markdown a {
   text-decoration: underline;
 }
+.markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.4em;
+  background: white;
+}
 
 .legal {
   line-height: 1.7;

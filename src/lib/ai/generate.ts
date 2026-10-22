@@ -4,6 +4,7 @@ import { AiError } from "@/lib/ai/errors";
 import {
   SYSTEM_PROMPT,
   examPrompt,
+  importPrompt,
   linkPrompt,
   planPrompt,
   reinforcePrompt,
@@ -14,6 +15,8 @@ import { AI_MODEL } from "@/lib/billing/plans";
 import {
   examJsonSchema,
   examSchema,
+  importedExamJsonSchema,
+  importedExamSchema,
   planJsonSchema,
   planSchema,
   reinforceJsonSchema,
@@ -151,5 +154,15 @@ export async function generate(client: AiClient, req: GenerateRequest): Promise<
         examJsonSchema,
         examSchema,
       );
+    case "import": {
+      const exam = await generateStructured(
+        client,
+        [sourceBlock(req.source), { type: "text", text: importPrompt(req.answerKey) }],
+        importedExamJsonSchema,
+        importedExamSchema,
+      );
+      if (exam.questions.length === 0) throw new AiError("no_questions");
+      return exam;
+    }
   }
 }

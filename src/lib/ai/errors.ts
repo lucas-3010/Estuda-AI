@@ -9,11 +9,12 @@ export type AiErrorCode =
   | "invalid_output"
   | "network"
   | "unauthenticated"
-  | "source_unreadable";
+  | "source_unreadable"
+  | "no_questions";
 
 const MESSAGES: Record<AiErrorCode, string> = {
   quota_exceeded: "Você usou todas as gerações com IA do seu plano este mês. Troque de plano para gerar mais.",
-  files_not_allowed: "Gerar a partir de PDF e foto está nos planos Pro e Max.",
+  files_not_allowed: "Usar PDF e foto está nos planos Pro e Max.",
   unavailable: "A geração com IA está indisponível agora. Tente de novo em alguns minutos.",
   rate_limited: "Muitas gerações seguidas. Espere um minuto e tente de novo.",
   refused: "A IA não gerou conteúdo para este tema. Tente reformular.",
@@ -22,6 +23,7 @@ const MESSAGES: Record<AiErrorCode, string> = {
   unauthenticated: "Sua sessão expirou. Entre de novo para continuar.",
   source_unreadable:
     "Não consegui ler esse link. Confira se a página é pública. Se for vídeo ou página com login, copie o texto ou a transcrição e use \"Colar texto\".",
+  no_questions: "Não encontrei questões de múltipla escolha nesse material. Confira se enviou a prova certa e se ela está legível.",
 };
 
 export class AiError extends Error {

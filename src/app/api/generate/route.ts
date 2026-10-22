@@ -20,6 +20,7 @@ const STATUS: Record<AiErrorCode, number> = {
   network: 502,
   unauthenticated: 401,
   source_unreadable: 422,
+  no_questions: 422,
 };
 
 function fail(code: AiErrorCode) {
@@ -54,7 +55,9 @@ export async function POST(request: Request) {
   let usageId: number;
   try {
     const plan = PLANS[await getUserPlan(userId)];
-    if (req.mode === "source" && req.source.kind !== "text" && !plan.files) return fail("files_not_allowed");
+    if ((req.mode === "source" || req.mode === "import") && req.source.kind !== "text" && !plan.files) {
+      return fail("files_not_allowed");
+    }
 
     // Reserva a geração antes de chamar a IA: pedidos simultâneos não passam da cota.
     const { data: claim, error } = await admin.rpc("claim_generation", {

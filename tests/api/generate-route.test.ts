@@ -101,6 +101,13 @@ describe("POST /api/generate", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  test("plano grátis não importa prova em PDF", async () => {
+    const res = await POST(request({ mode: "import", source: { kind: "pdf", data: "JVBERi0x" } }));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ code: "files_not_allowed" });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   test("plano grátis gera a partir de texto colado", async () => {
     generate.mockResolvedValue({ steps: [] });
     const res = await POST(
