@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { SITE, providerLine } from "@/lib/site";
 
 export function SiteHeader() {
@@ -21,9 +22,10 @@ export function SiteHeader() {
         <Link href="/sobre" className="hidden text-sm text-zinc-600 hover:text-zinc-900 md:inline dark:text-zinc-400 dark:hover:text-zinc-100">
           Sobre
         </Link>
+        <ThemeToggle className="ml-auto" />
         <Link
           href="/login"
-          className="ml-auto rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800"
+          className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800"
         >
           Entrar
         </Link>

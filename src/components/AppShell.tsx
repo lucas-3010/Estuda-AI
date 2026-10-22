@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { createBrowserSupabase } from "@/lib/supabase/client";
 
 const LINKS = [
@@ -63,6 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/precos" className="ml-auto hidden rounded-md px-2.5 py-1.5 text-sm font-medium text-indigo-700 md:inline dark:text-indigo-400">
             Planos
           </Link>
+          <ThemeToggle className="ml-auto md:ml-0" />
           <button
             type="button"
             onClick={signOut}
@@ -75,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-expanded={menuOpen}
             aria-controls="menu-celular"
             onClick={() => setMenuOpen((open) => !open)}
-            className="ml-auto rounded-md px-3 py-2 text-sm font-medium md:hidden"
+            className="rounded-md px-3 py-2 text-sm font-medium md:hidden"
           >
             {menuOpen ? "Fechar" : "Menu"}
           </button>

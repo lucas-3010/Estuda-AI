@@ -20,6 +20,8 @@ export type Plan = {
   files: boolean;
   /** Recebe o lembrete diário por e-mail. */
   reminders: boolean;
+  /** Respostas digitadas na revisão que a IA corrige por dia. Respostas idênticas ao verso não contam. */
+  answerChecks: number;
   highlights: string[];
 };
 
@@ -31,7 +33,8 @@ export const PLANS: Record<PlanId, Plan> = {
     generations: 3,
     files: false,
     reminders: false,
-    highlights: ["3 gerações com IA por mês", "Revisões ilimitadas", "Texto colado", "Modo quiz e Anki"],
+    answerChecks: 10,
+    highlights: ["3 gerações com IA por mês", "10 respostas corrigidas pela IA por dia", "Revisões ilimitadas", "Modo quiz e Anki"],
   },
   basico: {
     id: "basico",
@@ -40,7 +43,8 @@ export const PLANS: Record<PlanId, Plan> = {
     generations: 20,
     files: false,
     reminders: true,
-    highlights: ["20 gerações com IA por mês", "Revisões ilimitadas", "Texto colado", "Lembrete diário por e-mail"],
+    answerChecks: 25,
+    highlights: ["20 gerações com IA por mês", "25 respostas corrigidas pela IA por dia", "Revisões ilimitadas", "Lembrete diário por e-mail"],
   },
   pro: {
     id: "pro",
@@ -49,8 +53,10 @@ export const PLANS: Record<PlanId, Plan> = {
     generations: 60,
     files: true,
     reminders: true,
+    answerChecks: 40,
     highlights: [
       "60 gerações com IA por mês",
+      "40 respostas corrigidas pela IA por dia",
       "Cartões a partir de PDF e foto",
       "Lembrete diário por e-mail",
       "Tudo do Básico",
@@ -63,7 +69,8 @@ export const PLANS: Record<PlanId, Plan> = {
     generations: 150,
     files: true,
     reminders: true,
-    highlights: ["150 gerações com IA por mês", "Cartões a partir de PDF e foto", "Ideal para concursos", "Tudo do Pro"],
+    answerChecks: 50,
+    highlights: ["150 gerações com IA por mês", "50 respostas corrigidas pela IA por dia", "Cartões a partir de PDF e foto", "Tudo do Pro"],
   },
 };
 
@@ -83,6 +90,8 @@ export const COSTS = {
   usdBrl: 5.5,
   /** Pior caso por geração com Haiku 5.5: ~60 mil tokens de entrada (PDF) + 12 mil de saída ≈ US$ 0,012. */
   perGeneration: 0.1,
+  /** Correção de uma resposta com Haiku 5.5: ~1,5 mil tokens de entrada + 400 de saída ≈ US$ 0,00035. */
+  perAnswerCheck: 0.002,
   /** Stripe no Brasil (cartão nacional): 3,99% + R$ 0,39 por cobrança. */
   stripePercent: 0.0399,
   stripeFixed: 0.39,
@@ -106,7 +115,9 @@ export function fixedCostsPerMonth(): number {
 
 /** Custo mensal de um assinante que usa todas as gerações do plano. */
 export function worstCaseCost(plan: Plan): number {
-  const ai = (plan.generations + COSTS.freeGenerationsPerSubscriber) * COSTS.perGeneration;
+  const ai =
+    (plan.generations + COSTS.freeGenerationsPerSubscriber) * COSTS.perGeneration +
+    plan.answerChecks * 30 * COSTS.perAnswerCheck;
   const payment = plan.price * COSTS.stripePercent + COSTS.stripeFixed;
   const fixedShare = fixedCostsPerMonth() / COSTS.subscribers;
   return ai + payment + fixedShare;
