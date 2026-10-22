@@ -7,7 +7,7 @@ import { SiteFooter, SiteHeader } from "@/components/marketing/SiteHeader";
 export const metadata: Metadata = {
   title: { absolute: "Estuda-AI · Do edital ao dia da prova, com flashcards e IA" },
   description:
-    "Cole o edital e a IA monta o plano com flashcards até a prova. O termômetro mostra quanto do edital você lembra hoje. Caderno de erros automático, lei seca e modo áudio.",
+    "Cole o edital e a IA monta o plano com flashcards até a prova. Veja sua chance de aprovação contra a nota de corte, siga a agenda do dia e receba aviso quando sair o edital. Caderno de erros, lei seca e modo áudio.",
 };
 
 const STEPS = [
@@ -37,6 +37,21 @@ const UNIQUE = [
     example: "Hoje: 72% do que você estudou · no dia da prova: 81%",
   },
   {
+    title: "Chance de aprovação",
+    text: "Informe a nota de corte do último concurso, ou deixe a IA pesquisar. Cruzamos com a sua memória e o peso de cada disciplina e dizemos quantos pontos faltam e onde eles estão.",
+    example: "Se a prova fosse hoje: 62 pontos. Corte: 70. Faltam 8: o que mais rende é Raciocínio Lógico.",
+  },
+  {
+    title: "Agenda do dia",
+    text: "Diga quantas horas tem em cada dia da semana. Toda manhã o site monta o roteiro pelo que você está esquecendo, pelo peso no edital e pela data da prova, e você manda para o Google Agenda.",
+    example: "25 min revisando Constitucional · 30 min de cartões novos de Português · 15 min de simulado",
+  },
+  {
+    title: "Radar de editais",
+    text: "Escolha o cargo ou o órgão que você quer. Todo dia procuramos o edital de abertura e avisamos quando ele sair, com um atalho para montar o plano na hora.",
+    example: "Saiu o edital: Polícia Federal 2026 · Agente. Montar o plano?",
+  },
+  {
     title: "Caderno de erros automático",
     text: "Errou uma questão do ENEM, de uma prova antiga ou do simulado? Ela vira um cartão na hora, com a resposta certa e a explicação, e volta na revisão até você acertar.",
     example: "3 questões erradas foram para o seu caderno de erros",
@@ -51,15 +66,31 @@ const UNIQUE = [
     text: "O site lê a pergunta, você responde falando e a IA corrige. Dá para revisar no ônibus, dirigindo ou na academia, sem tocar na tela.",
     example: "“Qual o prazo do estágio probatório?” · “Três anos.” · Certo!",
   },
+  {
+    title: "Tenho certeza?",
+    text: "Antes de ver a resposta, marque se tem certeza ou se está chutando. Acerto no chute volta mais cedo e vai para o caderno de erros, e você vê o quanto a sua confiança bate com os acertos.",
+    example: "Quando você diz que tem certeza, acerta 91%",
+  },
+  {
+    title: "Modo véspera",
+    text: "Nos 7 dias antes da prova, o site para de mostrar cartões novos e traz primeiro o que você tem mais chance de esquecer nas disciplinas que valem mais.",
+    example: "Faltam 5 dias: só revisão, dos cartões mais fracos para os mais fortes",
+  },
 ];
 
 const FEATURES = [
-  { title: "Sequência e meta diária", text: "Acompanhe quantos dias seguidos você estudou e bata a meta do dia." },
+  { title: "Resposta corrigida pela IA", text: "Escreva a resposta com suas palavras: a IA diz se está certa, explica o erro e mostra o caminho." },
+  { title: "Tutor no cartão", text: "Não entendeu a resposta? Pergunte ao tutor ali mesmo, sem sair da revisão." },
   { title: "Quiz e simulado", text: "Questões reais do ENEM, provas que você importa e simulados com IA no estilo da banca." },
+  { title: "Pontos fracos", text: "Veja as etapas em que você mais erra e gere cartões de reforço com um clique." },
+  { title: "Data da prova", text: "Marque a data e saiba quantos cartões novos por dia cabem até lá." },
+  { title: "De PDF, foto ou link", text: "Envie a apostila, a foto do caderno ou o link de um texto e receba os cartões." },
+  { title: "Sequência e meta diária", text: "Acompanhe quantos dias seguidos você estudou e bata a meta do dia." },
   { title: "Lembrete por e-mail", text: "Receba todo dia quantos cartões você tem para revisar." },
+  { title: "Compartilhe seus planos", text: "Mande o link do plano para um amigo, que copia os cartões para a conta dele." },
   { title: "Importa e exporta do Anki", text: "Traga seus baralhos ou leve seus cartões para o Anki." },
-  { title: "Celular e computador", text: "Estude no ônibus pelo celular e continue no computador." },
-  { title: "Estatísticas", text: "Veja sua taxa de acerto e quantas revisões vêm pela frente." },
+  { title: "Estatísticas", text: "Taxa de acerto, memória por plano, calibração e quantas revisões vêm pela frente." },
+  { title: "Celular, computador e tema escuro", text: "Estude no ônibus pelo celular, continue no computador, de dia ou de noite." },
 ];
 
 const AUDIENCES = ["Concursos públicos", "ENEM e vestibulares", "OAB", "Faculdade", "Idiomas", "Programação", "Certificações"];
@@ -93,8 +124,9 @@ export default function LandingPage() {
               Cole o edital. Saiba, todo dia, quanto dele você lembra.
             </h1>
             <p className="mt-5 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-              A IA transforma o edital num plano de flashcards até a prova. A repetição espaçada marca a hora de revisar, e o
-              termômetro mostra quanto você sabe de cada disciplina, hoje e no dia da prova.
+              A IA transforma o edital num plano de flashcards até a prova. A repetição espaçada marca a hora de revisar, o
+              termômetro mostra quanto você sabe de cada disciplina e a chance de aprovação diz quantos pontos faltam para a
+              nota de corte.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/login" className="rounded-md bg-indigo-700 px-5 py-3 font-medium text-white hover:bg-indigo-800">
@@ -256,6 +288,9 @@ function ThermometerMock() {
             </li>
           ))}
         </ul>
+        <p className="mt-5 rounded-md border-l-4 border-gold-500 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
+          🎯 Se a prova fosse hoje: <strong>62 pontos</strong>. Nota de corte: 70. O que mais rende: Raciocínio Lógico.
+        </p>
       </div>
       <figcaption className="sr-only">O termômetro mostra quanto você lembra de cada disciplina do edital.</figcaption>
     </figure>
