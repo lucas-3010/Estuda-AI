@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getAccount } from "@/lib/data/account";
 import { listCards } from "@/lib/data/cards";
 import { listPlansWithProgress, type PlanWithProgress } from "@/lib/data/plans";
+import { addMistake } from "@/lib/data/mistakes";
 import { deletePracticeExam, listPracticeExams, type PracticeExam } from "@/lib/data/practiceExams";
 import { AiError } from "@/lib/ai/errors";
 import {
@@ -19,6 +20,7 @@ import {
   type EnemLanguage,
 } from "@/lib/enem";
 import { callGenerate } from "@/lib/generateClient";
+import { mistakeCard } from "@/lib/mistakes";
 import {
   MIN_QUIZ_CARDS,
   buildQuiz,
@@ -63,6 +65,12 @@ type Phase =
   | { kind: "playing"; questions: QuizQuestion[]; index: number; picked: number | null; correct: number }
   | { kind: "done"; total: number; correct: number };
 
+/** Situação da questão errada no caderno de erros. */
+type MistakeState = "saving" | "saved" | "failed";
+
+/** Questões que não são cartões da pessoa vão para o caderno de erros quando ela erra. */
+const MISTAKE_SOURCES: Source[] = ["enem", "provas", "ai"];
+
 export function QuizSession() {
   const [plans, setPlans] = useState<PlanWithProgress[] | null>(null);
   const [planId, setPlanId] = useState("");
@@ -77,6 +85,10 @@ export function QuizSession() {
   const [importing, setImporting] = useState(false);
   const [filesAllowed, setFilesAllowed] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: "setup" });
+  const [mistake, setMistake] = useState<MistakeState | null>(null);
+  const [savedMistakes, setSavedMistakes] = useState(0);
+  // Plano do caderno: o do simulado; nas questões reais, o "Caderno de erros".
+  const [mistakesPlan, setMistakesPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -180,6 +192,8 @@ export function QuizSession() {
   }
 
   async function start() {
+    setSavedMistakes(0);
+    setMistake(null);
     if (source === "ai") return startExam();
     if (source === "enem") return startEnem();
     if (source === "provas") return startPractice();
@@ -205,8 +219,22 @@ export function QuizSession() {
 
   function pick(option: number) {
     if (phase.kind !== "playing" || phase.picked !== null) return;
-    const right = option === phase.questions[phase.index].answer;
+    const question = phase.questions[phase.index];
+    const right = option === question.answer;
     setPhase({ ...phase, picked: option, correct: phase.correct + (right ? 1 : 0) });
+    if (!right && MISTAKE_SOURCES.includes(source)) void saveMistake(question, option);
+  }
+
+  async function saveMistake(question: QuizQuestion, option: number) {
+    setMistake("saving");
+    try {
+      await addMistake(source === "ai" ? planId || null : null, mistakeCard(question, option));
+      setMistake("saved");
+      setSavedMistakes((n) => n + 1);
+      setMistakesPlan(source === "ai" ? planId || null : null);
+    } catch {
+      setMistake("failed");
+    }
   }
 
   function next() {
@@ -216,6 +244,7 @@ export function QuizSession() {
     } else {
       setPhase({ ...phase, index: phase.index + 1, picked: null });
     }
+    setMistake(null);
   }
 
   if (phase.kind === "playing") {
@@ -254,6 +283,13 @@ export function QuizSession() {
             );
           })}
         </ul>
+        {phase.picked !== null && mistake && (
+          <p aria-live="polite" className={`text-sm ${mistake === "failed" ? "text-red-700 dark:text-red-400" : muted}`}>
+            {mistake === "saving" && "Guardando no caderno de erros…"}
+            {mistake === "saved" && "📒 Questão guardada no seu caderno de erros. Ela volta na revisão até você acertar."}
+            {mistake === "failed" && "Não foi possível guardar no caderno de erros."}
+          </p>
+        )}
         {phase.picked !== null && q.note && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
             {q.note}
@@ -288,6 +324,12 @@ export function QuizSession() {
         <p className={`mt-1 ${muted}`}>
           {phase.correct} de {phase.total} acertos
         </p>
+        {savedMistakes > 0 && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            📒 {savedMistakes === 1 ? "1 questão errada foi" : `${savedMistakes} questões erradas foram`} para o seu caderno de
+            erros e {savedMistakes === 1 ? "vai voltar" : "vão voltar"} na revisão.
+          </p>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <button type="button" className={btnPrimary} onClick={() => (source === "ai" ? setPhase({ kind: "setup" }) : start())}>
             {source === "ai" ? "Novo simulado" : source === "enem" ? "Outras questões" : "Jogar de novo"}
@@ -297,7 +339,7 @@ export function QuizSession() {
               Mudar opções
             </button>
           )}
-          <Link href="/revisar" className={btnSecondary}>
+          <Link href={savedMistakes > 0 && mistakesPlan ? `/revisar?plano=${mistakesPlan}` : "/revisar"} className={btnSecondary}>
             Ir para a revisão
           </Link>
         </div>
@@ -353,7 +395,10 @@ export function QuizSession() {
         ))}
       </div>
       <p className={muted}>
-        {SOURCE_HELP[source]} O quiz não muda o agendamento das revisões.
+        {SOURCE_HELP[source]}{" "}
+        {MISTAKE_SOURCES.includes(source)
+          ? "Cada questão que você errar vira um cartão no seu caderno de erros."
+          : "O quiz não muda o agendamento das revisões."}
       </p>
 
       {source === "enem" && (

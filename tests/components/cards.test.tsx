@@ -13,6 +13,7 @@ vi.mock("@/lib/data/cards", () => ({
   deleteCard: (...a: unknown[]) => deleteCard(...a),
   createCard: (...a: unknown[]) => createCard(...a),
 }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/lib/data/plans", () => ({
   listPlansWithProgress: async () => [
     { id: "p1", topic: "SQL", level: "iniciante", createdAt: "", steps: [{ id: "s1", title: "Joins", goal: "", position: 0, counts: { new: 0, learning: 0, review: 0 } }] },

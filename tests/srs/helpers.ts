@@ -19,6 +19,9 @@ export function makeCardRow(overrides: Partial<CardRow> = {}): CardRow {
     lapses: 0,
     state: 0,
     last_review: null,
+    origin: null,
+    topic: null,
+    law_ref: null,
     ...overrides,
   };
 }

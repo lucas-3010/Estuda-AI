@@ -3,17 +3,46 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { listDueCandidates } from "@/lib/data/cards";
+import { listMemoryCards, paceOf, recentlyStartedCards } from "@/lib/data/memory";
 import { listPlansWithProgress, type PlanWithProgress } from "@/lib/data/plans";
 import { newCardsStudiedToday } from "@/lib/data/reviews";
+import { todayIn } from "@/lib/exam";
 import { getSettings, updateSettings, userTimeZone, type Settings } from "@/lib/data/settings";
 import { buildQueue } from "@/lib/srs/queue";
+import type { MemoryCard } from "@/lib/srs/thermometer";
+import { Thermometer } from "@/components/memory/Thermometer";
 import { btnPrimary, card, muted } from "@/components/ui/styles";
 import { PlanList } from "./PlanList";
 
 type State =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "ready"; plans: PlanWithProgress[]; dueToday: number; settings: Settings };
+  | { status: "ready"; plans: PlanWithProgress[]; dueToday: number; settings: Settings; memory: MemoryData | null };
+
+/** Cartões de cada plano com o estado de memória e o ritmo de cartões novos por dia. */
+export type MemoryData = Map<string, { cards: MemoryCard[]; newPerDay: number }>;
+
+async function loadMemory(plans: PlanWithProgress[]): Promise<MemoryData> {
+  const [cards, started] = await Promise.all([listMemoryCards(), recentlyStartedCards()]);
+  const planOfStep = new Map(plans.flatMap((p) => p.steps.map((s) => [s.id, p.id] as const)));
+  const byPlan = new Map<string, MemoryCard[]>(plans.map((p) => [p.id, []]));
+  for (const card of cards) {
+    const planId = card.step_id ? planOfStep.get(card.step_id) : undefined;
+    if (planId) byPlan.get(planId)?.push(card);
+  }
+  return new Map([...byPlan].map(([id, list]) => [id, { cards: list, newPerDay: paceOf(list, started) }]));
+}
+
+/** O plano do termômetro principal: a prova mais próxima ou, sem datas, o mais estudado. */
+export function heroPlan(plans: PlanWithProgress[], memory: MemoryData, today: string): PlanWithProgress | null {
+  const studied = (p: PlanWithProgress) =>
+    memory.get(p.id)?.cards.filter((c) => c.state !== 0).length ?? 0;
+  const candidates = plans.filter((p) => p.kind !== "mistakes" && studied(p) > 0);
+  const upcoming = candidates
+    .filter((p) => p.examDate && p.examDate >= today)
+    .sort((a, b) => a.examDate!.localeCompare(b.examDate!));
+  return upcoming[0] ?? [...candidates].sort((a, b) => studied(b) - studied(a))[0] ?? null;
+}
 
 export function HomeDashboard() {
   const [state, setState] = useState<State>({ status: "loading" });
@@ -21,14 +50,16 @@ export function HomeDashboard() {
   useEffect(() => {
     const timeZone = userTimeZone();
     Promise.all([listPlansWithProgress(), listDueCandidates(), getSettings(), newCardsStudiedToday(timeZone)])
-      .then(([plans, candidates, settings, studied]) => {
+      .then(async ([plans, candidates, settings, studied]) => {
+        // O termômetro é um extra: se falhar, o painel continua funcionando.
+        const memory = await loadMemory(plans).catch(() => null);
         const queue = buildQueue(candidates, {
           now: new Date(),
           timeZone,
           newPerDay: settings.newCardsPerDay,
           newStudiedToday: studied,
         });
-        setState({ status: "ready", plans, dueToday: queue.length, settings });
+        setState({ status: "ready", plans, dueToday: queue.length, settings, memory });
       })
       .catch(() => setState({ status: "error" }));
   }, []);
@@ -56,8 +87,22 @@ export function HomeDashboard() {
     );
   }
 
+  const hero = state.memory ? heroPlan(state.plans, state.memory, todayIn(userTimeZone())) : null;
+  const heroMemory = hero ? state.memory?.get(hero.id) : undefined;
+
   return (
     <div className="flex flex-col gap-6">
+      {hero && heroMemory && (
+        <Thermometer
+          variant="hero"
+          topic={hero.topic}
+          examDate={hero.examDate}
+          steps={hero.steps}
+          cards={heroMemory.cards}
+          newPerDay={heroMemory.newPerDay}
+          retention={state.settings.desiredRetention}
+        />
+      )}
       <section className={`${card} flex flex-wrap items-center justify-between gap-4`}>
         {state.dueToday > 0 ? (
           <>
@@ -81,6 +126,8 @@ export function HomeDashboard() {
         <h2 className="text-lg font-semibold">Seus planos</h2>
         <PlanList
           plans={state.plans}
+          memory={state.memory}
+          retention={state.settings.desiredRetention}
           newCardsPerDay={state.settings.newCardsPerDay}
           onRaiseNewPerDay={async (value) => {
             const settings = { ...state.settings, newCardsPerDay: value };

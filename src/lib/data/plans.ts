@@ -1,7 +1,11 @@
 import { createEmptyCard } from "ts-fsrs";
 import { toNextState } from "@/lib/srs/fsrs";
 import { createBrowserSupabase } from "@/lib/supabase/client";
-import type { GeneratedPlan, Level } from "@/lib/validation/plan";
+import type { Level } from "@/lib/validation/plan";
+
+/** Cartão para `save_plan`: origem e artigo são opcionais (lei seca). */
+export type PlanCardInput = { front: string; back: string; origin?: "law"; law_ref?: string };
+export type PlanInput = { steps: Array<{ title: string; goal: string; cards: PlanCardInput[] }> };
 
 export type StepProgress = {
   id: string;
@@ -11,10 +15,13 @@ export type StepProgress = {
   counts: { new: number; learning: number; review: number };
 };
 
+export type PlanKind = "topic" | "edital" | "law" | "mistakes";
+
 export type PlanWithProgress = {
   id: string;
   topic: string;
   level: Level;
+  kind: PlanKind;
   createdAt: string;
   shareToken: string | null;
   examDate: string | null;
@@ -31,7 +38,7 @@ export async function savePlan(input: {
   topic: string;
   level: Level;
   context?: string;
-  plan: GeneratedPlan;
+  plan: PlanInput;
 }): Promise<string> {
   const { data, error } = await createBrowserSupabase().rpc("save_plan", {
     p_topic: input.topic,
@@ -46,7 +53,7 @@ export async function savePlan(input: {
 export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {
   const { data, error } = await createBrowserSupabase()
     .from("study_plans")
-    .select("id, topic, level, created_at, share_token, exam_date, plan_steps(id, title, goal, position, cards(state))")
+    .select("id, topic, level, kind, created_at, share_token, exam_date, plan_steps(id, title, goal, position, cards(state))")
     .order("created_at", { ascending: false });
   if (error) throw error;
 
@@ -54,6 +61,7 @@ export async function listPlansWithProgress(): Promise<PlanWithProgress[]> {
     id: plan.id,
     topic: plan.topic,
     level: plan.level as Level,
+    kind: plan.kind as PlanKind,
     createdAt: plan.created_at,
     shareToken: plan.share_token,
     examDate: plan.exam_date,
@@ -84,5 +92,11 @@ export async function deletePlan(id: string): Promise<void> {
 /** Grava ou apaga (null) a data da prova do plano. */
 export async function setExamDate(id: string, examDate: string | null): Promise<void> {
   const { error } = await createBrowserSupabase().from("study_plans").update({ exam_date: examDate }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Marca o tipo do plano (por exemplo, lei seca) depois de salvo com `save_plan`. */
+export async function setPlanKind(id: string, kind: PlanKind): Promise<void> {
+  const { error } = await createBrowserSupabase().from("study_plans").update({ kind }).eq("id", id);
   if (error) throw error;
 }

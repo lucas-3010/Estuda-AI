@@ -3,8 +3,11 @@ import type { ZodType } from "zod";
 import { AiError } from "@/lib/ai/errors";
 import {
   SYSTEM_PROMPT,
+  editalPrompt,
+  editalStepPrompt,
   examPrompt,
   importPrompt,
+  lawPrompt,
   linkPrompt,
   planPrompt,
   reinforcePrompt,
@@ -13,6 +16,12 @@ import {
 } from "@/lib/ai/prompt";
 import { AI_MODEL } from "@/lib/billing/plans";
 import {
+  editalCardsJsonSchema,
+  editalCardsSchema,
+  editalJsonSchema,
+  editalSchema,
+  lawPlanJsonSchema,
+  lawPlanSchema,
   examJsonSchema,
   examSchema,
   importedExamJsonSchema,
@@ -23,6 +32,9 @@ import {
   reinforceSchema,
   stepJsonSchema,
   stepSchema,
+  type EditalDiscipline,
+  type GeneratedEdital,
+  type GeneratedLawPlan,
   type GenerateRequest,
   type GenerateResult,
   type Source,
@@ -114,7 +126,43 @@ async function generateStructured<T>(
   throw new AiError("invalid_output");
 }
 
-export async function generate(client: AiClient, req: GenerateRequest): Promise<GenerateResult> {
+/** Pedidos que a rota resolve com passos próprios (banco ou download da lei). */
+type RouteOnly = "edital_step" | "law";
+export type DirectRequest = Exclude<GenerateRequest, { mode: RouteOnly }>;
+
+/** Cartões de uma disciplina do edital, cada um com o tópico que cobre. */
+export function generateEditalCards(
+  client: AiClient,
+  title: string,
+  banca: string | null,
+  discipline: EditalDiscipline,
+) {
+  return generateStructured(
+    client,
+    editalStepPrompt(title, banca, discipline),
+    editalCardsJsonSchema,
+    editalCardsSchema,
+  );
+}
+
+/** Plano de lei seca a partir do texto (já baixado e recortado) da lei. */
+export function generateLawPlan(
+  client: AiClient,
+  lawText: string,
+  req: Extract<GenerateRequest, { mode: "law" }>,
+): Promise<GeneratedLawPlan> {
+  return generateStructured(
+    client,
+    [
+      { type: "text", text: `<lei>\n${lawText}\n</lei>` },
+      { type: "text", text: lawPrompt(req.lawName, req.level, req.banca, req.articles) },
+    ],
+    lawPlanJsonSchema,
+    lawPlanSchema,
+  );
+}
+
+export async function generate(client: AiClient, req: DirectRequest): Promise<GenerateResult | GeneratedEdital> {
   switch (req.mode) {
     case "plan":
       return generateStructured(client, planPrompt(req.topic, req.level, req.context), planJsonSchema, planSchema);
@@ -154,6 +202,17 @@ export async function generate(client: AiClient, req: GenerateRequest): Promise<
         examJsonSchema,
         examSchema,
       );
+    case "edital":
+      return req.source.kind === "link"
+        ? generateStructured(client, editalPrompt(req.banca, req.source.url), editalJsonSchema, editalSchema, {
+            webFetch: true,
+          })
+        : generateStructured(
+            client,
+            [sourceBlock(req.source), { type: "text", text: editalPrompt(req.banca) }],
+            editalJsonSchema,
+            editalSchema,
+          );
     case "import": {
       const exam = await generateStructured(
         client,

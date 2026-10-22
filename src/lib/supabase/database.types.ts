@@ -22,6 +22,7 @@ export type Database = {
           created_at: string;
           share_token: string | null;
           exam_date: string | null;
+          kind: string;
         };
         Insert: {
           id?: string;
@@ -32,6 +33,7 @@ export type Database = {
           created_at?: string;
           share_token?: string | null;
           exam_date?: string | null;
+          kind?: string;
         };
         Update: {
           id?: string;
@@ -42,6 +44,7 @@ export type Database = {
           created_at?: string;
           share_token?: string | null;
           exam_date?: string | null;
+          kind?: string;
         };
         Relationships: [];
       };
@@ -53,6 +56,7 @@ export type Database = {
           position: number;
           title: string;
           goal: string;
+          kind: string;
         };
         Insert: {
           id?: string;
@@ -61,6 +65,7 @@ export type Database = {
           position: number;
           title: string;
           goal: string;
+          kind?: string;
         };
         Update: {
           id?: string;
@@ -69,6 +74,7 @@ export type Database = {
           position?: number;
           title?: string;
           goal?: string;
+          kind?: string;
         };
         Relationships: [
           {
@@ -99,6 +105,9 @@ export type Database = {
           lapses: number;
           state: number;
           last_review: string | null;
+          origin: string | null;
+          topic: string | null;
+          law_ref: string | null;
         };
         Insert: {
           id?: string;
@@ -118,6 +127,9 @@ export type Database = {
           lapses?: number;
           state?: number;
           last_review?: string | null;
+          origin?: string | null;
+          topic?: string | null;
+          law_ref?: string | null;
         };
         Update: {
           id?: string;
@@ -137,6 +149,9 @@ export type Database = {
           lapses?: number;
           state?: number;
           last_review?: string | null;
+          origin?: string | null;
+          topic?: string | null;
+          law_ref?: string | null;
         };
         Relationships: [
           {
@@ -276,6 +291,65 @@ export type Database = {
         Update: { id?: string; user_id?: string; title?: string; questions?: Json; created_at?: string };
         Relationships: [];
       };
+      editais: {
+        Row: {
+          id: string;
+          user_id: string;
+          plan_id: string | null;
+          title: string;
+          banca: string | null;
+          disciplines: Json;
+          generated: number[];
+          attempts: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          plan_id?: string | null;
+          title: string;
+          banca?: string | null;
+          disciplines: Json;
+          generated?: number[];
+          attempts?: number;
+          created_at?: string;
+        };
+        Update: {
+          plan_id?: string | null;
+          title?: string;
+          banca?: string | null;
+          disciplines?: Json;
+        };
+        Relationships: [];
+      };
+      law_articles: {
+        Row: {
+          id: string;
+          user_id: string;
+          plan_id: string;
+          source_url: string | null;
+          law_name: string;
+          article: string;
+          snapshot: string;
+          text_hash: string;
+          current_snapshot: string | null;
+          changed_at: string | null;
+          checked_at: string | null;
+        };
+        Insert: {
+          plan_id: string;
+          source_url?: string | null;
+          law_name: string;
+          article: string;
+          snapshot: string;
+        };
+        Update: {
+          current_snapshot?: string | null;
+          changed_at?: string | null;
+          checked_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -339,6 +413,34 @@ export type Database = {
       study_streak: {
         Args: { p_tz: string };
         Returns: { current_streak: number; best_streak: number; reviews_today: number }[];
+      };
+      add_mistake: {
+        Args: { p_plan_id: string | null; p_front: string; p_back: string };
+        Returns: string;
+      };
+      create_edital_plan: {
+        Args: { p_edital_id: string; p_disciplines: Json; p_exam_date: string | null };
+        Returns: string;
+      };
+      claim_edital_step: {
+        Args: { p_user: string; p_edital_id: string; p_index: number };
+        Returns: {
+          plan_id: string;
+          step_id: string;
+          title: string;
+          banca: string | null;
+          discipline: Json;
+          discipline_count: number;
+          plan_created_at: string;
+        }[];
+      };
+      release_edital_step: {
+        Args: { p_edital_id: string; p_index: number };
+        Returns: undefined;
+      };
+      acknowledge_law_change: {
+        Args: { p_id: string };
+        Returns: undefined;
       };
       reminder_candidates: {
         Args: Record<string, never>;
